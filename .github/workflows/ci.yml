@@ -1,0 +1,130 @@
+name: CybouS3 CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    runs-on: macos-latest
+
+    strategy:
+      matrix:
+        swift-version: ["6.0"]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup Swift ${{ matrix.swift-version }}
+      uses: swift-actions/setup-swift@v2
+      with:
+        swift-version: ${{ matrix.swift-version }}
+
+    - name: Cache Swift packages
+      uses: actions/cache@v4
+      with:
+        path: |
+          CybS3/.build
+          SwiftS3/.build
+        key: ${{ runner.os }}-swift${{ matrix.swift-version }}-${{ hashFiles('**/Package.resolved') }}
+        restore-keys: |
+          ${{ runner.os }}-swift${{ matrix.swift-version }}-
+
+    - name: Build CybS3
+      run: |
+        cd CybS3
+        swift build -c release
+
+    - name: Test CybS3
+      run: |
+        cd CybS3
+        swift test
+
+    - name: Build SwiftS3
+      run: |
+        cd SwiftS3
+        swift build -c release
+
+    - name: Test SwiftS3
+      run: |
+        cd SwiftS3
+        swift test
+
+    - name: Integration Tests
+      run: |
+        cd CybS3
+        swift build -c release
+        # Start SwiftS3 in background for integration tests
+        ../SwiftS3/.build/release/SwiftS3 server --hostname 127.0.0.1 --port 8080 --storage /tmp/swifts3-test --access-key admin --secret-key password &
+        SERVER_PID=$!
+        sleep 3
+        # Run integration tests
+        ./.build/release/cybs3 test integration --bucket test-bucket
+        # Cleanup
+        kill $SERVER_PID || true
+
+  lint:
+    runs-on: macos-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup Swift
+      uses: swift-actions/setup-swift@v2
+      with:
+        swift-version: "6.0"
+
+    - name: Install SwiftLint
+      run: brew install swiftlint
+
+    - name: Run SwiftLint
+      run: |
+        swiftlint CybS3/Sources CybS3/Tests SwiftS3/Sources SwiftS3/Tests --strict --reporter github-actions-logging
+
+  format-check:
+    runs-on: macos-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup Swift
+      uses: swift-actions/setup-swift@v2
+      with:
+        swift-version: "6.0"
+
+    - name: Install SwiftFormat
+      run: brew install swiftformat
+
+    - name: Check Code Formatting
+      run: |
+        swiftformat --lint CybS3/Sources CybS3/Tests SwiftS3/Sources SwiftS3/Tests
+
+  security:
+    runs-on: macos-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup Swift
+      uses: swift-actions/setup-swift@v2
+      with:
+        swift-version: "6.0"
+
+    - name: Build for Security Testing
+      run: |
+        cd CybS3
+        swift build -c release
+
+    - name: Run Security Tests
+      run: |
+        cd CybS3
+        # Start SwiftS3 for security tests
+        ../SwiftS3/.build/release/SwiftS3 server --hostname 127.0.0.1 --port 8080 --storage /tmp/swifts3-security --access-key admin --secret-key password &
+        SERVER_PID=$!
+        sleep 3
+        # Run security tests
+        ./.build/release/cybs3 test security --bucket security-test
+        # Cleanup
+        kill $SERVER_PID || true
