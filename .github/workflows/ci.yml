@@ -35,33 +35,33 @@ jobs:
     - name: Build CybS3
       run: |
         cd CybS3
-        swift build -c release
+        swift build -c release --build-path ../.build
 
     - name: Test CybS3
       run: |
         cd CybS3
-        swift test
+        swift test --build-path ../.build
 
     - name: Build SwiftS3
       run: |
         cd SwiftS3
-        swift build -c release
+        swift build -c release --build-path ../.build
 
     - name: Test SwiftS3
       run: |
         cd SwiftS3
-        swift test
+        swift test --build-path ../.build
 
     - name: Integration Tests
       run: |
         cd CybS3
-        swift build -c release
+        swift build -c release --build-path ../.build
         # Start SwiftS3 in background for integration tests
-        ../SwiftS3/.build/release/SwiftS3 server --hostname 127.0.0.1 --port 8080 --storage /tmp/swifts3-test --access-key admin --secret-key password &
+        ../SwiftS3/.build/arm64-apple-macosx/release/SwiftS3 server --hostname 127.0.0.1 --port 8080 --storage /tmp/swifts3-test --access-key admin --secret-key password &
         SERVER_PID=$!
         sleep 3
         # Run integration tests
-        ./.build/release/cybs3 test integration --bucket test-bucket
+        .build/arm64-apple-macosx/release/cybs3 test integration --bucket test-bucket
         # Cleanup
         kill $SERVER_PID || true
 
@@ -121,10 +121,10 @@ jobs:
       run: |
         cd CybS3
         # Start SwiftS3 for security tests
-        ../SwiftS3/.build/release/SwiftS3 server --hostname 127.0.0.1 --port 8080 --storage /tmp/swifts3-security --access-key admin --secret-key password &
+        ../SwiftS3/.build/arm64-apple-macosx/release/SwiftS3 server --hostname 127.0.0.1 --port 8080 --storage /tmp/swifts3-security --access-key admin --secret-key password &
         SERVER_PID=$!
         sleep 3
         # Run security tests
-        ./.build/release/cybs3 test security --bucket security-test
+        .build/arm64-apple-macosx/release/cybs3 test security --bucket security-test
         # Cleanup
         kill $SERVER_PID || true

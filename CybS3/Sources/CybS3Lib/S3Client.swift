@@ -1165,32 +1165,26 @@ public actor S3Client {
         var partNumber = 1
         let totalSize = data.count
         
-        do {
-            while offset < totalSize {
-                let end = min(offset + partSize, totalSize)
-                let partData = data[offset..<end]
-                
-                let etag = try await uploadPart(
-                    key: key,
-                    uploadId: uploadId,
-                    partNumber: partNumber,
-                    data: Data(partData)
-                )
-                
-                completedParts.append(CompletedPart(partNumber: partNumber, etag: etag))
-                
-                offset = end
-                partNumber += 1
-                
-                progress?(Double(offset) / Double(totalSize))
-            }
+        while offset < totalSize {
+            let end = min(offset + partSize, totalSize)
+            let partData = data[offset..<end]
             
-            try await completeMultipartUpload(key: key, uploadId: uploadId, parts: completedParts)
-        } catch {
-            // Abort on failure
-            try? await abortMultipartUpload(key: key, uploadId: uploadId)
-            throw error
+            let etag = try await uploadPart(
+                key: key,
+                uploadId: uploadId,
+                partNumber: partNumber,
+                data: Data(partData)
+            )
+            
+            completedParts.append(CompletedPart(partNumber: partNumber, etag: etag))
+            
+            offset = end
+            partNumber += 1
+            
+            progress?(Double(offset) / Double(totalSize))
         }
+        
+        try await completeMultipartUpload(key: key, uploadId: uploadId, parts: completedParts)
     }
 }
 
@@ -1209,7 +1203,7 @@ extension S3Client {
                 do {
                     // For streaming, we need to implement pagination manually
                     // This is a simplified version that gets all objects at once
-                    let objects = try await listObjects(prefix: nil, delimiter: nil)
+                    let objects = try await listObjects(prefix: nil)
                     for object in objects {
                         continuation.yield(object)
                     }
@@ -1231,7 +1225,7 @@ extension S3Client {
                 do {
                     // For streaming, we need to implement pagination manually
                     // This is a simplified version that gets all objects at once
-                    let objects = try await listObjects(prefix: prefix, delimiter: nil)
+                    let objects = try await listObjects(prefix: prefix)
                     for object in objects {
                         continuation.yield(object)
                     }

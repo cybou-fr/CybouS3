@@ -55,10 +55,9 @@ public final class DefaultContainer: DependencyContainer {
             endpoint: S3Endpoint(host: "localhost", port: 9000, useSSL: false),
             accessKey: "",
             secretKey: "",
-            bucket: "",
+            bucket: nil,
             region: "us-east-1",
-            sseKms: false,
-            kmsKeyId: nil
+            sseKms: false
         )
     }
     

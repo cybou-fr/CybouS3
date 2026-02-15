@@ -76,7 +76,7 @@ public struct TestEnvironment {
     }
     
     /// Clean up test data.
-    private static func cleanupTestData(client: S3Client) async throws {
+    private static func cleanupTestData(client: S3ClientProtocol) async throws {
         // List and delete all objects in the test bucket
         let objects = try await client.listObjects(prefix: nil, delimiter: nil)
         for object in objects where !object.isDirectory {
