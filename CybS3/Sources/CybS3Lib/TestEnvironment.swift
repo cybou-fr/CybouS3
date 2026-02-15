@@ -47,7 +47,7 @@ public struct TestEnvironment {
             bucket: config.bucket,
             region: config.region,
             sseKms: false,
-            kmsKeyId: nil
+            kmsKeyId: nil as String?
         )
         
         // Ensure bucket exists
@@ -78,7 +78,7 @@ public struct TestEnvironment {
     /// Clean up test data.
     private static func cleanupTestData(client: S3ClientProtocol) async throws {
         // List and delete all objects in the test bucket
-        let objects = try await client.listObjects(prefix: nil, delimiter: nil)
+        let objects = try await client.listObjects(prefix: nil, delimiter: nil, maxKeys: nil)
         for object in objects where !object.isDirectory {
             try await client.deleteObject(key: object.key)
         }

@@ -4,7 +4,7 @@ import Crypto
 import SwiftBIP39
 import CybS3Lib
 
-extension CybS3 {
+extension CybS3CLI {
     struct Vaults: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "vaults",
@@ -20,7 +20,7 @@ extension CybS3 {
     }
 }
 
-extension CybS3.Vaults {
+extension CybS3CLI.Vaults {
     /// Command to add a new encrypted vault configuration.
     struct Add: AsyncParsableCommand {
         static let configuration = CommandConfiguration(

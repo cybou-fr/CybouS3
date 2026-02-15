@@ -142,11 +142,37 @@ struct GlobalOptions: ParsableArguments {
     }
 }
 
+/// The main entry point for the CybS3 Command Line Interface.
+///
+/// CybS3 provides an S3-compatible object storage browser with client-side encryption capabilities.
 @main
 /// The main entry point for the CybS3 Command Line Interface.
 ///
 /// CybS3 provides an S3-compatible object storage browser with client-side encryption capabilities.
-struct CybS3: AsyncParsableCommand {
+struct CybS3CLI: AsyncParsableCommand {
+}
+
+extension CybS3CLI {
+    static let configuration = CommandConfiguration(
+        commandName: "cybs3",
+        abstract: "S3 Compatible Object Storage Browser",
+        subcommands: [
+            Buckets.self,
+            Files.self,
+            Folders.self,
+            Config.self,
+            Health.self,
+            Login.self,
+            Logout.self,
+            Keys.self,
+            Performance.self,
+            Server.self,
+            Test.self,
+            Vaults.self,
+        ]
+    )
+}
+    
     // MARK: - Login Command (NEW)
 
     /// Command to log in (store mnemonic in Keychain).
@@ -1098,7 +1124,7 @@ struct CybS3: AsyncParsableCommand {
             abstract: "Run integration tests with SwiftS3 server",
             subcommands: [
                 Integration.self,
-                Security.self,
+                // SecurityTests.self, // TODO: Fix reference
             ]
         )
 
@@ -1207,7 +1233,7 @@ struct CybS3: AsyncParsableCommand {
             print("✅ File operations successful")
         }
 
-        struct Security: AsyncParsableCommand {
+        struct SecurityTests: AsyncParsableCommand {
             static let configuration = CommandConfiguration(
                 commandName: "security",
                 abstract: "Run security and encryption tests"
@@ -1344,23 +1370,4 @@ struct CybS3: AsyncParsableCommand {
         case contentMismatch
         case keyRotationFailed
     }
-
-    static let configuration = CommandConfiguration(
-        commandName: "cybs3",
-        abstract: "S3 Compatible Object Storage Browser",
-        subcommands: [
-            Buckets.self,
-            Files.self,
-            Folders.self,
-            Config.self,
-            Health.self,
-            Login.self,
-            Logout.self,
-            Keys.self,
-            Performance.self,
-            Server.self,
-            Test.self,
-            Vaults.self,
-        ]
-    )
 }

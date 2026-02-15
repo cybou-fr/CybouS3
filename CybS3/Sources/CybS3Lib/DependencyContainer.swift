@@ -35,11 +35,25 @@ public protocol KeychainServiceProtocol {
 
 /// Default dependency container implementation.
 public final class DefaultContainer: DependencyContainer {
-    public let s3Client: S3ClientProtocol
     public let encryptionService: EncryptionServiceProtocol
     public let keychainService: KeychainServiceProtocol
     public let configurationManager: ConfigurationManager
     public let metrics: Metrics.Type
+    public lazy var s3Client: S3ClientProtocol = {
+        // S3Client needs configuration, so we create a basic one
+        // In real usage, this would be configured properly
+        let config = S3Client.Configuration()
+        return S3Client(
+            endpoint: S3Endpoint(host: "localhost", port: 9000, useSSL: false),
+            accessKey: "",
+            secretKey: "",
+            bucket: nil as String?,
+            region: "us-east-1",
+            configuration: config,
+            sseKms: false,
+            kmsKeyId: nil as String?
+        )
+    }()
     
     /// Initialize with default implementations.
     public init() {
@@ -47,18 +61,6 @@ public final class DefaultContainer: DependencyContainer {
         self.keychainService = SecureStorageFactory.create()
         self.configurationManager = ConfigurationManager.shared
         self.metrics = Metrics.self
-        
-        // S3Client needs configuration, so we create a basic one
-        // In real usage, this would be configured properly
-        let config = S3Client.Configuration()
-        self.s3Client = S3Client(
-            endpoint: S3Endpoint(host: "localhost", port: 9000, useSSL: false),
-            accessKey: "",
-            secretKey: "",
-            bucket: nil,
-            region: "us-east-1",
-            sseKms: false
-        )
     }
     
     /// Initialize with custom implementations (for testing).
@@ -69,11 +71,11 @@ public final class DefaultContainer: DependencyContainer {
         configurationManager: ConfigurationManager,
         metrics: Metrics.Type
     ) {
-        self.s3Client = s3Client
         self.encryptionService = encryptionService
         self.keychainService = keychainService
         self.configurationManager = configurationManager
         self.metrics = metrics
+        self.s3Client = s3Client
     }
 }
 

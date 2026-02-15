@@ -3,7 +3,7 @@ import ArgumentParser
 import SwiftBIP39
 import CybS3Lib
 
-extension CybS3 {
+extension CybS3CLI {
     struct Keys: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "keys",
@@ -17,7 +17,7 @@ extension CybS3 {
     }
 }
 
-extension CybS3.Keys {
+extension CybS3CLI.Keys {
     /// Command to generate a new 12-word mnemonic phrase.
     struct Create: AsyncParsableCommand {
         static let configuration = CommandConfiguration(

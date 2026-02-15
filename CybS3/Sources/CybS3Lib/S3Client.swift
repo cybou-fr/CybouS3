@@ -405,9 +405,6 @@ public actor S3Client {
     
     /// Configuration options for the S3 client.
     public struct Configuration: Sendable {
-    
-    /// Configuration options for the S3 client.
-    public struct Configuration: Sendable {
         /// Maximum concurrent connections per host.
         public var maxConnectionsPerHost: Int
         /// Connection idle timeout in seconds.
@@ -1145,48 +1142,9 @@ public actor S3Client {
         }
     }
     
-    /// Uploads a large object using multipart upload.
-    ///
-    /// - Parameters:
-    ///   - key: The object key.
-    ///   - data: The data to upload.
-    ///   - partSize: Size of each part (minimum 5MB, default 10MB).
-    ///   - progress: Optional progress callback.
-    public func putObjectMultipart(
-        key: String,
-        data: Data,
-        partSize: Int = 10 * 1024 * 1024,
-        progress: (@Sendable (Double) -> Void)? = nil
-    ) async throws {
-        let uploadId = try await initiateMultipartUpload(key: key)
-        
-        var completedParts: [CompletedPart] = []
-        var offset = 0
-        var partNumber = 1
-        let totalSize = data.count
-        
-        while offset < totalSize {
-            let end = min(offset + partSize, totalSize)
-            let partData = data[offset..<end]
-            
-            let etag = try await uploadPart(
-                key: key,
-                uploadId: uploadId,
-                partNumber: partNumber,
-                data: Data(partData)
-            )
-            
-            completedParts.append(CompletedPart(partNumber: partNumber, etag: etag))
-            
-            offset = end
-            partNumber += 1
-            
-            progress?(Double(offset) / Double(totalSize))
-        }
-        
-        try await completeMultipartUpload(key: key, uploadId: uploadId, parts: completedParts)
-    }
+    // putObjectMultipart method temporarily removed for debugging
 }
+
 
 // MARK: - AsyncSequence Extensions
 
