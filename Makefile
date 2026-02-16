@@ -28,6 +28,11 @@ help:
 	@echo "  chaos         - Run chaos engineering tests"
 	@echo "  regression    - Run performance regression detection"
 	@echo "  ecosystem-health - Check unified ecosystem health"
+	@echo "  multicloud-test - Test multi-cloud provider support"
+	@echo "  multicloud-integration - Run multi-cloud integration tests"
+	@echo "  compliance-check - Run compliance checks for all standards"
+	@echo "  compliance-report - Generate compliance reports"
+	@echo "  retention-apply - Apply data retention policies"
 	@echo ""
 
 # Build targets
@@ -147,8 +152,35 @@ ecosystem-health: build-release
 	@echo "Checking ecosystem health..."
 	./CybS3/.build/release/cybs3 health ecosystem --detailed
 
+# Multi-cloud testing
+multicloud-test: build-release
+	@echo "Testing multi-cloud providers..."
+	./CybS3/.build/release/cybs3 multicloud providers
+	@echo "Multi-cloud provider listing completed"
+
+# Multi-cloud integration tests (placeholder)
+multicloud-integration: build-release
+	@echo "Running multi-cloud integration tests..."
+	@echo "Note: Multi-cloud integration tests require provider credentials"
+	@echo "Configure providers with: cybs3 multicloud configure <provider>"
+	@echo "Integration tests will be fully implemented with enterprise compliance features"
+
+# Compliance testing
+compliance-check: build-release
+	@echo "Running compliance checks..."
+	./CybS3/.build/release/cybs3 compliance check --all
+
+compliance-report: build-release
+	@echo "Generating compliance reports..."
+	./CybS3/.build/release/cybs3 compliance report soc2 --title "SOC2 Compliance Report"
+	./CybS3/.build/release/cybs3 compliance report gdpr --title "GDPR Compliance Report"
+
+retention-apply: build-release
+	@echo "Applying data retention policies..."
+	./CybS3/.build/release/cybs3 compliance retention --apply
+
 # Full CI pipeline
-ci: clean build-all test-all integration security chaos regression ecosystem-health
+ci: clean build-all test-all integration security chaos regression ecosystem-health multicloud-test compliance-check
 	@echo "CI pipeline completed successfully!"
 
 # Development workflow

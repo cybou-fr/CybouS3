@@ -402,6 +402,8 @@ public actor S3Client {
     private let configuration: Configuration
     private let sseKms: Bool
     private let kmsKeyId: String?
+    private let auditLogger: (any AuditLogStorage)?
+    private let sessionId: String?
     
     /// Configuration options for the S3 client.
     public struct Configuration: Sendable {
@@ -449,6 +451,8 @@ public actor S3Client {
     ///   - configuration: Client configuration options.
     ///   - sseKms: Enable server-side encryption with KMS.
     ///   - kmsKeyId: KMS key ID for server-side encryption.
+    ///   - auditLogger: Optional audit logger for compliance tracking.
+    ///   - sessionId: Optional session identifier for audit correlation.
     /// - Precondition: accessKey and secretKey must not be empty for authenticated operations.
     public init(
         endpoint: S3Endpoint,
@@ -458,7 +462,9 @@ public actor S3Client {
         region: String = "us-east-1",
         configuration: Configuration = .default,
         sseKms: Bool = false,
-        kmsKeyId: String? = nil
+        kmsKeyId: String? = nil,
+        auditLogger: (any AuditLogStorage)? = nil,
+        sessionId: String? = nil
     ) {
         // Validate inputs
         precondition(!endpoint.host.isEmpty, "S3 endpoint host cannot be empty")
@@ -470,6 +476,8 @@ public actor S3Client {
         self.configuration = configuration
         self.sseKms = sseKms
         self.kmsKeyId = kmsKeyId
+        self.auditLogger = auditLogger
+        self.sessionId = sessionId ?? UUID().uuidString
         
         self.signer = AWSV4Signer(accessKey: accessKey, secretKey: secretKey, region: region)
         self.logger = Logger(label: "com.cybs3.client")
@@ -708,33 +716,71 @@ public actor S3Client {
     /// - Returns: An `AsyncThrowingStream` supplying the object's data in chunks.
     public func getObjectStream(key: String) async throws -> AsyncThrowingStream<Data, Error> {
         guard bucket != nil else { throw S3Error.bucketNotFound }
+
+        // Audit logging: operation start
+        if let auditLogger = auditLogger {
+            try? await auditLogger.store(AuditLogEntry.operationStart(
+                actor: "client",
+                resource: "\(bucket!)/\(key)",
+                action: "download",
+                source: endpoint.host,
+                sessionId: sessionId
+            ))
+        }
         
         let path = key.hasPrefix("/") ? key : "/" + key
         let request = try await buildRequest(method: "GET", path: path)
         
-        let response = try await httpClient.execute(request, timeout: .seconds(30))
-        guard response.status == HTTPResponseStatus.ok else {
-            if response.status == HTTPResponseStatus.notFound {
-                throw S3Error.objectNotFound
+        do {
+            let response = try await httpClient.execute(request, timeout: .seconds(30))
+            guard response.status == HTTPResponseStatus.ok else {
+                if response.status == HTTPResponseStatus.notFound {
+                    throw S3Error.objectNotFound
+                }
+                if response.status == HTTPResponseStatus.forbidden {
+                    throw S3Error.accessDenied(resource: key)
+                }
+                throw try await handleErrorResponse(response)
             }
-            if response.status == HTTPResponseStatus.forbidden {
-                throw S3Error.accessDenied(resource: key)
+
+            // Audit logging: operation complete
+            if let auditLogger = auditLogger {
+                try? await auditLogger.store(AuditLogEntry.operationComplete(
+                    actor: "client",
+                    resource: "\(bucket!)/\(key)",
+                    action: "download",
+                    source: endpoint.host,
+                    sessionId: sessionId,
+                    complianceTags: ["data_access", "download"]
+                ))
             }
-            throw try await handleErrorResponse(response)
-        }
-        
-        return AsyncThrowingStream { continuation in
-            Task {
-                do {
-                    for try await buffer in response.body {
-                        let data = Data(buffer: buffer)
-                        continuation.yield(data)
+            
+            return AsyncThrowingStream { continuation in
+                Task {
+                    do {
+                        for try await buffer in response.body {
+                            let data = Data(buffer: buffer)
+                            continuation.yield(data)
+                        }
+                        continuation.finish()
+                    } catch {
+                        continuation.finish(throwing: error)
                     }
-                    continuation.finish()
-                } catch {
-                    continuation.finish(throwing: error)
                 }
             }
+        } catch {
+            // Audit logging: operation failed
+            if let auditLogger = auditLogger {
+                try? await auditLogger.store(AuditLogEntry.operationFailed(
+                    actor: "client",
+                    resource: "\(bucket!)/\(key)",
+                    action: "download",
+                    error: error.localizedDescription,
+                    source: endpoint.host,
+                    sessionId: sessionId
+                ))
+            }
+            throw error
         }
     }
 
@@ -810,6 +856,18 @@ public actor S3Client {
     public func putObject<S: AsyncSequence & Sendable>(key: String, stream: S, length: Int64) async throws where S.Element == ByteBuffer {
         guard bucket != nil else { throw S3Error.bucketNotFound }
         guard !key.isEmpty else { throw S3Error.invalidURL }
+
+        // Audit logging: operation start
+        if let auditLogger = auditLogger {
+            try? await auditLogger.store(AuditLogEntry.operationStart(
+                actor: "client",
+                resource: "\(bucket!)/\(key)",
+                action: "upload",
+                source: endpoint.host,
+                sessionId: sessionId,
+                metadata: ["size": "\(length)"]
+            ))
+        }
         
         let path = key.hasPrefix("/") ? key : "/" + key
         
@@ -833,11 +891,40 @@ public actor S3Client {
             bodyHash: "UNSIGNED-PAYLOAD"
         )
         
-        // Use longer timeout for uploads based on file size (minimum 5 min, scale with size)
-        let timeoutSeconds = max(300, Int64(length / (1024 * 1024)) * 2) // ~2s per MB, min 5 min
-        let response = try await httpClient.execute(request, timeout: .seconds(timeoutSeconds))
-        guard response.status == HTTPResponseStatus.ok else {
-             throw try await handleErrorResponse(response)
+        do {
+            // Use longer timeout for uploads based on file size (minimum 5 min, scale with size)
+            let timeoutSeconds = max(300, Int64(length / (1024 * 1024)) * 2) // ~2s per MB, min 5 min
+            let response = try await httpClient.execute(request, timeout: .seconds(timeoutSeconds))
+            guard response.status == HTTPResponseStatus.ok else {
+                 throw try await handleErrorResponse(response)
+            }
+
+            // Audit logging: operation complete
+            if let auditLogger = auditLogger {
+                try? await auditLogger.store(AuditLogEntry.operationComplete(
+                    actor: "client",
+                    resource: "\(bucket!)/\(key)",
+                    action: "upload",
+                    source: endpoint.host,
+                    sessionId: sessionId,
+                    metadata: ["size": "\(length)"],
+                    complianceTags: ["data_access", "upload"]
+                ))
+            }
+        } catch {
+            // Audit logging: operation failed
+            if let auditLogger = auditLogger {
+                try? await auditLogger.store(AuditLogEntry.operationFailed(
+                    actor: "client",
+                    resource: "\(bucket!)/\(key)",
+                    action: "upload",
+                    error: error.localizedDescription,
+                    source: endpoint.host,
+                    sessionId: sessionId,
+                    metadata: ["size": "\(length)"]
+                ))
+            }
+            throw error
         }
     }
     

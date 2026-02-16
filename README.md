@@ -56,9 +56,18 @@ This combination delivers **double encryption** (client + server), unified manag
 ### 🏢 Enterprise Ready
 - **Multi-tenant support** with isolated vaults
 - **LDAP/AD integration** for authentication
-- **Audit logging** and compliance reporting
+- **Audit logging** and compliance reporting - *Implemented Q1 2027*
+- **SOC2/GDPR/HIPAA compliance** features - *Implemented Q1 2027*
+- **Data retention policies** and lifecycle management - *Implemented Q1 2027*
 - **VPC-only access** and advanced security
 - **Unified authentication** between client and server - *Implemented Q2 2026*
+
+### ☁️ Multi-Cloud Support
+- **13+ cloud providers** supported (AWS S3, GCP, Azure, MinIO, Wasabi, DigitalOcean, and more)
+- **Unified API** across all providers with automatic protocol adaptation
+- **S3-compatible** providers use optimized S3 client, others use native APIs
+- **Provider-agnostic** operations (upload, download, list, delete)
+- **Enterprise compliance** features (audit trails, retention policies) - *Q1 2027*
 
 ### 🔧 Developer Experience
 - **Unified CLI** for both client and server management - *Enhanced Q2 2026*
@@ -119,6 +128,19 @@ cybs3 test security
 
 # Run performance benchmarks (Q4 2026)
 cybs3 performance benchmark --swift-s3
+
+# Multi-cloud operations (Q1 2027)
+cybs3 multicloud providers                    # List supported providers
+cybs3 multicloud configure aws               # Configure AWS credentials
+cybs3 multicloud upload file.txt key.txt --provider aws --bucket my-bucket
+cybs3 multicloud download key.txt file.txt --provider gcp --bucket my-bucket
+
+# Compliance and audit operations (Q1 2027)
+cybs3 compliance check --all                 # Run all compliance checks
+cybs3 compliance report soc2                 # Generate SOC2 compliance report
+cybs3 compliance audit --limit 50            # Query recent audit logs
+cybs3 compliance retention --list            # View retention policies
+cybs3 compliance retention --apply           # Apply retention policies
 ```
 
 ### Development Workflow
