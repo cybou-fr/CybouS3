@@ -135,8 +135,6 @@ final class PerformanceBenchmarks: XCTestCase {
     }
 
     /// Benchmark large file operations.
-    // Temporarily disabled - putObjectMultipart method removed for debugging
-    /*
     func testLargeFileBenchmark() async throws {
         let sizes = [5 * 1024 * 1024, 10 * 1024 * 1024, 25 * 1024 * 1024] // 5MB, 10MB, 25MB
 
@@ -163,7 +161,6 @@ final class PerformanceBenchmarks: XCTestCase {
             try await s3Client.deleteObject(key: key)
         }
     }
-    */
 
     /// Benchmark encryption performance.
     func testEncryptionPerformance() throws {

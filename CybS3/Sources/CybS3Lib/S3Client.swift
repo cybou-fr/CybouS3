@@ -1143,6 +1143,60 @@ public actor S3Client {
     }
     
     // putObjectMultipart method temporarily removed for debugging
+    /// Uploads an object using multipart upload for large files.
+    ///
+    /// - Parameters:
+    ///   - key: The key to assign to the object.
+    ///   - data: The data to upload.
+    ///   - partSize: The size of each part in bytes (minimum 5MB for S3, but can be smaller for testing).
+    /// - Throws: `S3Error` if the upload fails.
+    public func putObjectMultipart(key: String, data: Data, partSize: Int) async throws {
+        guard bucket != nil else { throw S3Error.bucketNotFound }
+        guard !key.isEmpty else { throw S3Error.invalidURL }
+        guard partSize > 0 else { throw S3Error.invalidURL }
+        
+        // For small files, use regular putObject
+        if data.count <= partSize {
+            try await putObject(key: key, data: data)
+            return
+        }
+        
+        // Initiate multipart upload
+        let uploadId = try await initiateMultipartUpload(key: key)
+        
+        var completedParts: [CompletedPart] = []
+        var partNumber = 1
+        
+        do {
+            // Split data into parts and upload each part
+            var offset = 0
+            while offset < data.count {
+                let remainingBytes = data.count - offset
+                let currentPartSize = min(partSize, remainingBytes)
+                let partData = data[offset..<(offset + currentPartSize)]
+                
+                let etag = try await uploadPart(
+                    key: key,
+                    uploadId: uploadId,
+                    partNumber: partNumber,
+                    data: partData
+                )
+                
+                completedParts.append(CompletedPart(partNumber: partNumber, etag: etag))
+                
+                offset += currentPartSize
+                partNumber += 1
+            }
+            
+            // Complete the multipart upload
+            try await completeMultipartUpload(key: key, uploadId: uploadId, parts: completedParts)
+            
+        } catch {
+            // If anything fails, abort the multipart upload
+            try? await abortMultipartUpload(key: key, uploadId: uploadId)
+            throw error
+        }
+    }
 }
 
 

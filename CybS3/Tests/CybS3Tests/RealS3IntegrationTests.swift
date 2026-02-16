@@ -112,8 +112,6 @@ final class RealS3IntegrationTests: XCTestCase {
     }
 
     /// Test multipart upload functionality.
-    // Temporarily disabled - putObjectMultipart method removed for debugging
-    /*
     func testMultipartUpload() async throws {
         let testKey = "test-multipart-\(UUID().uuidString)"
         let largeData = Data(repeating: 0x42, count: 10 * 1024 * 1024) // 10MB
@@ -128,7 +126,6 @@ final class RealS3IntegrationTests: XCTestCase {
         // Cleanup
         try await s3Client.deleteObject(key: testKey)
     }
-    */
 
     /// Test concurrent operations.
     func testConcurrentOperations() async throws {
