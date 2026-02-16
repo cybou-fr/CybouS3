@@ -172,6 +172,7 @@ extension CybS3CLI {
             Server.self,
             Test.self,
             Vaults.self,
+            BackupCommands.self,
         ]
     )
 }

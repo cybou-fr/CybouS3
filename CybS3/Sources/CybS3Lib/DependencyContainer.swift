@@ -8,6 +8,8 @@ public protocol DependencyContainer {
     var keychainService: KeychainServiceProtocol { get }
     var configurationManager: ConfigurationManager { get }
     var metrics: Metrics.Type { get }
+    var backupManager: BackupManager { get }
+    var disasterRecoveryManager: DisasterRecoveryManager { get }
 }
 
 /// Protocol for S3 client operations.
@@ -54,6 +56,21 @@ public final class DefaultContainer: DependencyContainer {
             kmsKeyId: nil as String?
         )
     }()
+
+    private let _backupStorage: any BackupStorage = MemoryBackupStorage()
+    private let _auditLogger: any AuditLogStorage = FileAuditLogStorage(logDirectory: URL(fileURLWithPath: "/tmp/cybs3-audit"))
+
+    public lazy var backupManager: BackupManager = {
+        BackupManager(storage: _backupStorage, auditLogger: _auditLogger)
+    }()
+
+    public lazy var disasterRecoveryManager: DisasterRecoveryManager = {
+        DisasterRecoveryManager(
+            backupManager: backupManager,
+            auditLogger: _auditLogger,
+            cloudClientFactory: CloudClientFactory()
+        )
+    }()
     
     /// Initialize with default implementations.
     public init() {
@@ -69,13 +86,17 @@ public final class DefaultContainer: DependencyContainer {
         encryptionService: EncryptionServiceProtocol,
         keychainService: KeychainServiceProtocol,
         configurationManager: ConfigurationManager,
-        metrics: Metrics.Type
+        metrics: Metrics.Type,
+        backupStorage: any BackupStorage = MemoryBackupStorage(),
+        auditLogger: any AuditLogStorage = FileAuditLogStorage(logDirectory: URL(fileURLWithPath: "/tmp/cybs3-audit"))
     ) {
         self.encryptionService = encryptionService
         self.keychainService = keychainService
         self.configurationManager = configurationManager
         self.metrics = metrics
         self.s3Client = s3Client
+        self._backupStorage = backupStorage
+        self._auditLogger = auditLogger
     }
 }
 

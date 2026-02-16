@@ -33,6 +33,10 @@ help:
 	@echo "  compliance-check - Run compliance checks for all standards"
 	@echo "  compliance-report - Generate compliance reports"
 	@echo "  retention-apply - Apply data retention policies"
+	@echo "  backup-test - Run backup functionality tests"
+	@echo "  backup-integration - Run backup integration tests"
+	@echo "  disaster-recovery-test - Run disaster recovery readiness tests"
+	@echo "  backup-cleanup - Run backup cleanup tests"
 	@echo ""
 
 # Build targets
@@ -179,8 +183,28 @@ retention-apply: build-release
 	@echo "Applying data retention policies..."
 	./CybS3/.build/release/cybs3 compliance retention --apply
 
+# Backup and disaster recovery testing
+backup-test: build-release
+	@echo "Running backup functionality tests..."
+	./CybS3/.build/release/cybs3 backup create-config --name "test-backup" --source-provider aws --source-region us-east-1 --source-bucket test-source --dest-provider gcp --dest-region us-central1 --dest-bucket test-backup
+	./CybS3/.build/release/cybs3 backup list-configs
+
+backup-integration: build-release
+	@echo "Running backup integration tests..."
+	@echo "Note: Backup integration tests require configured cloud providers"
+	@echo "Create a backup config first: cybs3 backup create-config ..."
+	@echo "Then run: cybs3 backup start <config-id>"
+
+disaster-recovery-test: build-release
+	@echo "Running disaster recovery readiness tests..."
+	./CybS3/.build/release/cybs3 backup test-recovery --config-id "test-config-id"
+
+backup-cleanup: build-release
+	@echo "Running backup cleanup tests..."
+	./CybS3/.build/release/cybs3 backup cleanup
+
 # Full CI pipeline
-ci: clean build-all test-all integration security chaos regression ecosystem-health multicloud-test compliance-check
+ci: clean build-all test-all integration security chaos regression ecosystem-health multicloud-test compliance-check backup-test
 	@echo "CI pipeline completed successfully!"
 
 # Development workflow
