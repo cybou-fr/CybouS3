@@ -57,7 +57,7 @@ public actor AzureClient: CloudClientProtocol {
         request.headers.add(name: "Authorization", value: try createAuthorizationHeader(request: request, date: date))
         request.body = .bytes(data)
 
-        let response = try await httpClient.execute(request, deadline: .now() + .seconds(300))
+        let response = try await httpClient.execute(request, timeout: .seconds(300))
         guard response.status.code >= 200 && response.status.code < 300 else {
             throw CloudClientError.operationFailed("Upload failed with status \(response.status.code)")
         }
@@ -78,7 +78,7 @@ public actor AzureClient: CloudClientProtocol {
         request.headers.add(name: "x-ms-version", value: "2020-04-08")
         request.headers.add(name: "Authorization", value: try createAuthorizationHeader(request: request, date: date))
 
-        let response = try await httpClient.execute(request, deadline: .now() + .seconds(300))
+        let response = try await httpClient.execute(request, timeout: .seconds(300))
         guard response.status.code == 200 else {
             throw CloudClientError.operationFailed("Download failed with status \(response.status.code)")
         }
@@ -104,13 +104,13 @@ public actor AzureClient: CloudClientProtocol {
         request.headers.add(name: "x-ms-version", value: "2020-04-08")
         request.headers.add(name: "Authorization", value: try createAuthorizationHeader(request: request, date: date))
 
-        let response = try await httpClient.execute(request, deadline: .now() + .seconds(30))
+        let response = try await httpClient.execute(request, timeout: .seconds(30))
         guard response.status.code == 200 else {
             throw CloudClientError.operationFailed("List failed with status \(response.status.code)")
         }
 
         let data = try await response.body.collect(upTo: 1024 * 1024) // 1MB limit
-        return try parseListResponse(data)
+        return try parseListResponse(Data(data.readableBytesView))
     }
 
     /// Delete a blob from Azure Blob Storage.
@@ -128,7 +128,7 @@ public actor AzureClient: CloudClientProtocol {
         request.headers.add(name: "x-ms-version", value: "2020-04-08")
         request.headers.add(name: "Authorization", value: try createAuthorizationHeader(request: request, date: date))
 
-        let response = try await httpClient.execute(request, deadline: .now() + .seconds(30))
+        let response = try await httpClient.execute(request, timeout: .seconds(30))
         guard response.status.code >= 200 && response.status.code < 300 else {
             throw CloudClientError.operationFailed("Delete failed with status \(response.status.code)")
         }
@@ -149,7 +149,7 @@ public actor AzureClient: CloudClientProtocol {
         request.headers.add(name: "x-ms-version", value: "2020-04-08")
         request.headers.add(name: "Authorization", value: try createAuthorizationHeader(request: request, date: date))
 
-        let response = try await httpClient.execute(request, deadline: .now() + .seconds(30))
+        let response = try await httpClient.execute(request, timeout: .seconds(30))
         return response.status.code == 200
     }
 
@@ -168,7 +168,7 @@ public actor AzureClient: CloudClientProtocol {
         request.headers.add(name: "x-ms-version", value: "2020-04-08")
         request.headers.add(name: "Authorization", value: try createAuthorizationHeader(request: request, date: date))
 
-        let response = try await httpClient.execute(request, deadline: .now() + .seconds(30))
+        let response = try await httpClient.execute(request, timeout: .seconds(30))
         guard response.status.code == 200 else {
             throw CloudClientError.operationFailed("Metadata request failed with status \(response.status.code)")
         }
@@ -296,7 +296,7 @@ public actor AzureClient: CloudClientProtocol {
                     ))
                 }
                 currentObject = nil
-            } else if let object = currentObject {
+            } else if currentObject != nil {
                 if trimmed.hasPrefix("<Name>") && trimmed.hasSuffix("</Name>") {
                     currentObject?.name = trimmed.replacingOccurrences(of: "<Name>", with: "").replacingOccurrences(of: "</Name>", with: "")
                 } else if trimmed.hasPrefix("<Content-Length>") && trimmed.hasSuffix("</Content-Length>") {
@@ -335,5 +335,4 @@ private extension String {
     func urlEncoded() -> String {
         return self.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? self
     }
-}</content>
-<parameter name="filePath">/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/AzureClient.swift
+}

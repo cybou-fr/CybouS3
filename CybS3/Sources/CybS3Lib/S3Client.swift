@@ -368,7 +368,7 @@ struct AWSV4Signer {
 
 /// An actor that manages S3 interactions such as listing buckets, objects, and uploading/downloading files.
 /// It uses `AsyncHTTPClient` for networking and `AWSV4Signer` for authentication.
-public actor S3Client {
+public actor S3Client: CloudClientProtocol {
     private let endpoint: S3Endpoint
     private let bucket: String?
     private let region: String
@@ -719,7 +719,7 @@ public actor S3Client {
 
         // Audit logging: operation start
         if let auditLogger = auditLogger {
-            try? await auditLogger.store(AuditLogEntry.operationStart(
+            try? await auditLogger.store(entry: AuditLogEntry.operationStart(
                 actor: "client",
                 resource: "\(bucket!)/\(key)",
                 action: "download",
@@ -745,7 +745,7 @@ public actor S3Client {
 
             // Audit logging: operation complete
             if let auditLogger = auditLogger {
-                try? await auditLogger.store(AuditLogEntry.operationComplete(
+                try? await auditLogger.store(entry: AuditLogEntry.operationComplete(
                     actor: "client",
                     resource: "\(bucket!)/\(key)",
                     action: "download",
@@ -771,7 +771,7 @@ public actor S3Client {
         } catch {
             // Audit logging: operation failed
             if let auditLogger = auditLogger {
-                try? await auditLogger.store(AuditLogEntry.operationFailed(
+                try? await auditLogger.store(entry: AuditLogEntry.operationFailed(
                     actor: "client",
                     resource: "\(bucket!)/\(key)",
                     action: "download",
@@ -859,7 +859,7 @@ public actor S3Client {
 
         // Audit logging: operation start
         if let auditLogger = auditLogger {
-            try? await auditLogger.store(AuditLogEntry.operationStart(
+            try? await auditLogger.store(entry: AuditLogEntry.operationStart(
                 actor: "client",
                 resource: "\(bucket!)/\(key)",
                 action: "upload",
@@ -901,7 +901,7 @@ public actor S3Client {
 
             // Audit logging: operation complete
             if let auditLogger = auditLogger {
-                try? await auditLogger.store(AuditLogEntry.operationComplete(
+                try? await auditLogger.store(entry: AuditLogEntry.operationComplete(
                     actor: "client",
                     resource: "\(bucket!)/\(key)",
                     action: "upload",
@@ -914,7 +914,7 @@ public actor S3Client {
         } catch {
             // Audit logging: operation failed
             if let auditLogger = auditLogger {
-                try? await auditLogger.store(AuditLogEntry.operationFailed(
+                try? await auditLogger.store(entry: AuditLogEntry.operationFailed(
                     actor: "client",
                     resource: "\(bucket!)/\(key)",
                     action: "upload",
@@ -1281,6 +1281,60 @@ public actor S3Client {
         } catch {
             // If anything fails, abort the multipart upload
             try? await abortMultipartUpload(key: key, uploadId: uploadId)
+            throw error
+        }
+    }
+}
+
+// MARK: - CloudClientProtocol Conformance
+
+extension S3Client {
+    public func upload(key: String, data: Data) async throws {
+        try await putObject(key: key, data: data)
+    }
+
+    public func download(key: String) async throws -> Data {
+        try await getObject(key: key)
+    }
+
+    public func list(prefix: String?) async throws -> [CloudObject] {
+        let s3Objects = try await listObjects(prefix: prefix)
+        return s3Objects.map { s3Obj in
+            CloudObject(
+                key: s3Obj.key,
+                size: Int64(s3Obj.size),
+                lastModified: s3Obj.lastModified,
+                etag: s3Obj.etag
+            )
+        }
+    }
+
+    public func delete(key: String) async throws {
+        try await deleteObject(key: key)
+    }
+
+    public func metadata(key: String) async throws -> CloudObjectMetadata {
+        // For S3, we can get basic metadata from a HEAD request
+        if let size = try await getObjectSize(key: key) {
+            return CloudObjectMetadata(
+                key: key,
+                size: Int64(size),
+                lastModified: Date(), // Would need a separate call to get this
+                contentType: "application/octet-stream", // S3 doesn't return content-type in size check
+                etag: nil,
+                metadata: [:]
+            )
+        }
+        throw S3Error.objectNotFound
+    }
+
+    public func exists(key: String) async throws -> Bool {
+        do {
+            _ = try await getObjectSize(key: key)
+            return true
+        } catch S3Error.objectNotFound {
+            return false
+        } catch {
             throw error
         }
     }

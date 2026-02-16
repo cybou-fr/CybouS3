@@ -269,11 +269,11 @@ public struct BackupJob: Codable, Sendable {
     /// Timestamp when the backup was started.
     public let startedAt: Date
     /// Timestamp when the backup completed (nil if still running).
-    public let completedAt: Date?
+    public var completedAt: Date?
     /// Current status of the backup job.
-    public let status: BackupStatus
+    public var status: BackupStatus
     /// Progress information.
-    public let progress: BackupProgress
+    public var progress: BackupProgress
     /// Error message if the backup failed.
     public let errorMessage: String?
     /// Backup metadata.
@@ -318,11 +318,11 @@ public enum BackupStatus: String, Codable, Sendable {
 /// Backup progress information.
 public struct BackupProgress: Codable, Sendable {
     /// Number of objects processed.
-    public let objectsProcessed: Int
+    public var objectsProcessed: Int
     /// Total number of objects to process.
     public let objectsTotal: Int
     /// Number of bytes processed.
-    public let bytesProcessed: Int64
+    public var bytesProcessed: Int64
     /// Total number of bytes to process.
     public let bytesTotal: Int64
     /// Current operation being performed.

@@ -57,8 +57,8 @@ public final class DefaultContainer: DependencyContainer {
         )
     }()
 
-    private let _backupStorage: any BackupStorage = MemoryBackupStorage()
-    private let _auditLogger: any AuditLogStorage = FileAuditLogStorage(logDirectory: URL(fileURLWithPath: "/tmp/cybs3-audit"))
+    private var _backupStorage: any BackupStorage = MemoryBackupStorage()
+    private var _auditLogger: any AuditLogStorage = FileAuditLogStorage(logDirectory: URL(fileURLWithPath: "/tmp/cybs3-audit"))
 
     public lazy var backupManager: BackupManager = {
         BackupManager(storage: _backupStorage, auditLogger: _auditLogger)

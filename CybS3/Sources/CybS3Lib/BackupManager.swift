@@ -118,7 +118,7 @@ public actor BackupManager {
     public func createConfiguration(_ config: BackupConfiguration) async throws {
         try await storage.storeConfiguration(config)
 
-        try await auditLogger.store(AuditLogEntry(
+        try await auditLogger.store(entry: AuditLogEntry(
             eventType: .configurationChange,
             actor: "system",
             resource: "backup_configuration",
@@ -139,7 +139,7 @@ public actor BackupManager {
     public func updateConfiguration(_ config: BackupConfiguration) async throws {
         try await storage.storeConfiguration(config)
 
-        try await auditLogger.store(AuditLogEntry(
+        try await auditLogger.store(entry: AuditLogEntry(
             eventType: .configurationChange,
             actor: "system",
             resource: "backup_configuration",
@@ -155,7 +155,7 @@ public actor BackupManager {
     public func deleteConfiguration(id: String) async throws {
         try await storage.deleteConfiguration(id)
 
-        try await auditLogger.store(AuditLogEntry(
+        try await auditLogger.store(entry: AuditLogEntry(
             eventType: .configurationChange,
             actor: "system",
             resource: "backup_configuration",
@@ -192,7 +192,7 @@ public actor BackupManager {
                 failedJob.errorMessage = error.localizedDescription
                 try await storage.updateJob(failedJob)
 
-                try await auditLogger.store(AuditLogEntry(
+                try await auditLogger.store(entry: AuditLogEntry(
                     eventType: .operationFailed,
                     actor: "system",
                     resource: "backup_job",
@@ -211,7 +211,7 @@ public actor BackupManager {
 
         activeJobs[job.id] = task
 
-        try await auditLogger.store(AuditLogEntry(
+        try await auditLogger.store(entry: AuditLogEntry(
             eventType: .operationStart,
             actor: "system",
             resource: "backup_job",
@@ -237,7 +237,7 @@ public actor BackupManager {
                 try await storage.updateJob(job)
             }
 
-            try await auditLogger.store(AuditLogEntry(
+            try await auditLogger.store(entry: AuditLogEntry(
                 eventType: .operationComplete,
                 actor: "system",
                 resource: "backup_job",
@@ -268,7 +268,7 @@ public actor BackupManager {
             try await cleanupConfigurationBackups(config)
         }
 
-        try await auditLogger.store(AuditLogEntry(
+        try await auditLogger.store(entry: AuditLogEntry(
             eventType: .complianceCheck,
             actor: "system",
             resource: "backup_cleanup",
@@ -343,7 +343,7 @@ public actor BackupManager {
 
                 } catch {
                     failedCount += 1
-                    try await auditLogger.store(AuditLogEntry(
+                    try await auditLogger.store(entry: AuditLogEntry(
                         eventType: .operationFailed,
                         actor: "system",
                         resource: object.key,
@@ -393,7 +393,7 @@ public actor BackupManager {
             updatedJob.progress.bytesProcessed = updatedJob.progress.bytesTotal
             try await storage.updateJob(updatedJob)
 
-            try await auditLogger.store(AuditLogEntry(
+            try await auditLogger.store(entry: AuditLogEntry(
                 eventType: .operationComplete,
                 actor: "system",
                 resource: "backup_job",
@@ -458,8 +458,8 @@ public actor BackupManager {
     }
 
     private func cleanupConfigurationBackups(_ config: BackupConfiguration) async throws {
-        let jobs = try await storage.listJobs(for: config.configurationId)
-        let completedJobs = jobs.filter { $0.status == .completed }
+        let jobs = try await storage.listJobs(for: config.id)
+        let completedJobs = jobs.filter { $0.status == BackupStatus.completed }
 
         // Sort by completion date (newest first)
         let sortedJobs = completedJobs.sorted { ($0.completedAt ?? Date.distantPast) > ($1.completedAt ?? Date.distantPast) }
@@ -486,7 +486,7 @@ public actor BackupManager {
             // In a real implementation, we would also delete the actual backup files
             // from the destination storage
 
-            try await auditLogger.store(AuditLogEntry(
+            try await auditLogger.store(entry: AuditLogEntry(
                 eventType: .complianceCheck,
                 actor: "system",
                 resource: "backup_job",

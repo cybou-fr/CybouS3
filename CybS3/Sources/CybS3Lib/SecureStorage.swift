@@ -49,7 +49,7 @@ public final class KeychainStorage: SecureStorage {
         
         let status = SecItemAdd(query as CFDictionary, nil)
         guard status == errSecSuccess else {
-            throw KeychainError.operationFailed(status: Int(status))
+            throw KeychainError.operationFailed(status: status)
         }
     }
     
@@ -70,7 +70,7 @@ public final class KeychainStorage: SecureStorage {
         }
         
         guard status == errSecSuccess else {
-            throw KeychainError.operationFailed(status: Int(status))
+            throw KeychainError.operationFailed(status: status)
         }
         
         return result as? Data
@@ -85,7 +85,7 @@ public final class KeychainStorage: SecureStorage {
         
         let status = SecItemDelete(query as CFDictionary)
         if status != errSecSuccess && status != errSecItemNotFound {
-            throw KeychainError.operationFailed(status: Int(status))
+            throw KeychainError.operationFailed(status: status)
         }
     }
 }

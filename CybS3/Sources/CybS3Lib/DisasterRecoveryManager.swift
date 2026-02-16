@@ -49,7 +49,7 @@ public actor DisasterRecoveryManager {
             createdAt: Date()
         )
 
-        try await auditLogger.store(AuditLogEntry(
+        try await auditLogger.store(entry: AuditLogEntry(
             eventType: .operationStart,
             actor: "system",
             resource: "disaster_recovery",
@@ -75,7 +75,7 @@ public actor DisasterRecoveryManager {
 
         do {
             // Create recovery client
-            let recoveryClient = try cloudClientFactory.createCloudClient(
+            let recoveryClient = try CloudClientFactory.createCloudClient(
                 config: plan.recoveryConfiguration,
                 bucket: plan.recoveryConfiguration.region, // Use region as bucket for recovery
                 auditLogger: auditLogger,
@@ -117,7 +117,7 @@ public actor DisasterRecoveryManager {
                         error: error.localizedDescription
                     ))
 
-                    try await auditLogger.store(AuditLogEntry(
+                    try await auditLogger.store(entry: AuditLogEntry(
                         eventType: .operationFailed,
                         actor: "system",
                         resource: backupObject.key,
@@ -137,7 +137,7 @@ public actor DisasterRecoveryManager {
             result.status = .completed
             result.duration = result.completedAt!.timeIntervalSince(result.startedAt)
 
-            try await auditLogger.store(AuditLogEntry(
+            try await auditLogger.store(entry: AuditLogEntry(
                 eventType: .operationComplete,
                 actor: "system",
                 resource: "disaster_recovery",
@@ -160,7 +160,7 @@ public actor DisasterRecoveryManager {
             result.errorMessage = error.localizedDescription
             result.duration = result.completedAt!.timeIntervalSince(result.startedAt)
 
-            try await auditLogger.store(AuditLogEntry(
+            try await auditLogger.store(entry: AuditLogEntry(
                 eventType: .operationFailed,
                 actor: "system",
                 resource: "disaster_recovery",
@@ -197,7 +197,7 @@ public actor DisasterRecoveryManager {
             testResult.recentBackupCount = recentBackups.count
 
             // Test connectivity to backup destination
-            let destClient = try cloudClientFactory.createCloudClient(
+            let destClient = try CloudClientFactory.createCloudClient(
                 config: config.destinationConfig,
                 bucket: config.destinationBucket,
                 auditLogger: auditLogger,
@@ -210,7 +210,7 @@ public actor DisasterRecoveryManager {
 
             // Test recovery location accessibility
             let recoveryConfig = createRecoveryConfiguration(originalConfig: config)
-            let recoveryClient = try cloudClientFactory.createCloudClient(
+            let recoveryClient = try CloudClientFactory.createCloudClient(
                 config: recoveryConfig,
                 bucket: recoveryConfig.region,
                 auditLogger: auditLogger,
@@ -227,7 +227,7 @@ public actor DisasterRecoveryManager {
             // Calculate readiness score
             testResult.readinessScore = calculateReadinessScore(testResult)
 
-            try await auditLogger.store(AuditLogEntry(
+            try await auditLogger.store(entry: AuditLogEntry(
                 eventType: .complianceCheck,
                 actor: "system",
                 resource: "disaster_recovery",
@@ -249,7 +249,7 @@ public actor DisasterRecoveryManager {
             testResult.errorMessage = error.localizedDescription
             testResult.readinessScore = 0
 
-            try await auditLogger.store(AuditLogEntry(
+            try await auditLogger.store(entry: AuditLogEntry(
                 eventType: .operationFailed,
                 actor: "system",
                 resource: "disaster_recovery",
@@ -283,7 +283,7 @@ public actor DisasterRecoveryManager {
 
         // Check recovery configuration
         do {
-            let _ = try cloudClientFactory.createCloudClient(
+            let _ = try CloudClientFactory.createCloudClient(
                 config: plan.recoveryConfiguration,
                 bucket: plan.recoveryConfiguration.region,
                 auditLogger: auditLogger,
@@ -318,7 +318,7 @@ public actor DisasterRecoveryManager {
             ))
         }
 
-        try await auditLogger.store(AuditLogEntry(
+        try await auditLogger.store(entry: AuditLogEntry(
             eventType: .complianceCheck,
             actor: "system",
             resource: "disaster_recovery",
@@ -446,7 +446,7 @@ public struct DisasterRecoveryPlan: Codable, Sendable {
     public let id: String
     public let originalConfigurationId: String
     public let backupJobId: String
-    public let recoveryConfiguration: CloudConfiguration
+    public let recoveryConfiguration: CloudConfig
     public let estimatedDuration: TimeInterval
     public let riskAssessment: DisasterRecoveryRiskAssessment
     public let createdAt: Date

@@ -207,10 +207,8 @@ public actor DefaultLifecycleManager: LifecycleManager {
     public func applyRetentionPolicies() async throws -> RetentionSummary {
         let expiredData = try await getExpiredData()
 
-        var summary = RetentionSummary(
-            itemsChecked: expiredData.count,
-            itemsExpired: expiredData.count
-        )
+        let itemsChecked = expiredData.count
+        let itemsExpired = expiredData.count
 
         // Archive data that should be archived
         let dataToArchive = expiredData.filter { data in
@@ -220,9 +218,7 @@ public actor DefaultLifecycleManager: LifecycleManager {
             }
         }
 
-        if !dataToArchive.isEmpty {
-            summary.itemsArchived = try await archiveData(dataToArchive)
-        }
+        let itemsArchived = try await dataToArchive.isEmpty ? 0 : archiveData(dataToArchive)
 
         // Delete data that should be deleted
         let dataToDelete = expiredData.filter { data in
@@ -232,31 +228,38 @@ public actor DefaultLifecycleManager: LifecycleManager {
             }
         }
 
-        if !dataToDelete.isEmpty {
-            summary.itemsDeleted = try await deleteExpiredData(dataToDelete)
-        }
+        let itemsDeleted = try await dataToDelete.isEmpty ? 0 : deleteExpiredData(dataToDelete)
 
-        summary.totalSizeProcessed = expiredData.reduce(0) { $0 + $1.size }
+        let totalSizeProcessed = expiredData.reduce(Int64(0)) { $0 + $1.size }
+
+        let finalSummary = RetentionSummary(
+            itemsChecked: itemsChecked,
+            itemsExpired: itemsExpired,
+            itemsArchived: itemsArchived,
+            itemsDeleted: itemsDeleted,
+            totalSizeProcessed: totalSizeProcessed,
+            errors: []
+        )
 
         // Log the retention activity
-        try await auditLogger.store(AuditLogEntry(
+        try await auditLogger.store(entry: AuditLogEntry(
             eventType: .complianceCheck,
             actor: "system",
             resource: "retention_policy",
             action: "apply_policies",
             result: "completed",
             metadata: [
-                "items_checked": "\(summary.itemsChecked)",
-                "items_expired": "\(summary.itemsExpired)",
-                "items_archived": "\(summary.itemsArchived)",
-                "items_deleted": "\(summary.itemsDeleted)",
-                "total_size": "\(summary.totalSizeProcessed)"
+                "items_checked": "\(finalSummary.itemsChecked)",
+                "items_expired": "\(finalSummary.itemsExpired)",
+                "items_archived": "\(finalSummary.itemsArchived)",
+                "items_deleted": "\(finalSummary.itemsDeleted)",
+                "total_size": "\(finalSummary.totalSizeProcessed)"
             ],
             source: "lifecycle_manager",
             complianceTags: ["retention", "compliance"]
         ))
 
-        return summary
+        return finalSummary
     }
 
     public func getExpiredData() async throws -> [ExpirableData] {
@@ -276,7 +279,7 @@ public actor DefaultLifecycleManager: LifecycleManager {
 
         for item in data where item.type == "audit_log" {
             // Simulate archiving by logging the action
-            try await auditLogger.store(AuditLogEntry(
+            try await auditLogger.store(entry: AuditLogEntry(
                 eventType: .complianceCheck,
                 actor: "system",
                 resource: item.location,
@@ -301,7 +304,7 @@ public actor DefaultLifecycleManager: LifecycleManager {
 
         for item in data {
             // Log the deletion
-            try await auditLogger.store(AuditLogEntry(
+            try await auditLogger.store(entry: AuditLogEntry(
                 eventType: .complianceCheck,
                 actor: "system",
                 resource: item.location,
@@ -350,7 +353,7 @@ public actor DefaultLifecycleManager: LifecycleManager {
 
                 for (day, entries) in groupedByDay {
                     let age = Date().timeIntervalSince(day)
-                    let totalSize = entries.reduce(0) { $0 + Int64(entries.count * 256) } // Estimate size
+                    let totalSize = Int64(entries.count * 256) // Estimate 256 bytes per log entry
 
                     expiredLogs.append(ExpirableData(
                         id: "audit_logs_\(day.timeIntervalSince1970)",

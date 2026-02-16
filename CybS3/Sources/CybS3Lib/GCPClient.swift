@@ -1,6 +1,7 @@
 import Foundation
 import AsyncHTTPClient
 import NIOFoundationCompat
+import NIO
 
 /// Google Cloud Storage client implementation.
 public actor GCPClient: CloudClientProtocol {
@@ -95,7 +96,7 @@ public actor GCPClient: CloudClientProtocol {
         }
 
         let data = try await response.body.collect(upTo: 1024 * 1024) // 1MB limit
-        return try parseListResponse(data)
+        return try parseListResponse(Data(data.readableBytesView))
     }
 
     /// Delete an object from Google Cloud Storage.
@@ -234,5 +235,4 @@ private extension String {
     func urlEncoded() -> String {
         return self.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? self
     }
-}</content>
-<parameter name="filePath">/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/GCPClient.swift
+}

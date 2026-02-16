@@ -261,5 +261,4 @@ public enum ChaosError: Error {
     case serviceFailure(component: String)
     case resourceExhaustion
     case invalidFaultConfiguration
-}</content>
-<parameter name="filePath">/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/ChaosEngine.swift
+}

@@ -11,7 +11,7 @@ let package = Package(
         .iOS(.v15)
     ],
     products: [
-        .executable(name: "cybs3", targets: ["CybS3"])
+        .executable(name: "cybs3", targets: ["cybs3"])
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-argument-parser", from: "1.5.0"),
@@ -32,7 +32,7 @@ let package = Package(
             ]
         ),
         .executableTarget(
-            name: "CybS3",
+            name: "cybs3",
             dependencies: [
                 "CybS3Lib",
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),

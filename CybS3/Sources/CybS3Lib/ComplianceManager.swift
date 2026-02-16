@@ -1,7 +1,7 @@
 import Foundation
 
 /// Compliance standards supported by the system.
-public enum ComplianceStandard: String, Codable, Sendable {
+public enum ComplianceStandard: String, Codable, Sendable, CaseIterable {
     case soc2 = "SOC2"
     case gdpr = "GDPR"
     case hipaa = "HIPAA"

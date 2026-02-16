@@ -260,7 +260,7 @@ public struct CloudClientFactory {
 }
 
 /// Protocol for cloud storage clients.
-public protocol CloudClientProtocol: Sendable {
+public protocol CloudClientProtocol {
     /// Upload data to the cloud storage.
     func upload(key: String, data: Data) async throws
 
@@ -340,5 +340,4 @@ public enum CloudClientError: Error, LocalizedError {
             return "Operation failed: \(reason)"
         }
     }
-}</content>
-<parameter name="filePath">/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/CloudProvider.swift
+}
