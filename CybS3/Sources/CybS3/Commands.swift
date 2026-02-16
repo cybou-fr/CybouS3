@@ -1334,7 +1334,7 @@ extension CybS3CLI {
                     }
                 } else {
                     print("📄 Last \(lines) lines of logs for server on port \(port):")
-                    print("─" * 60)
+                    print(String(repeating: "─", count: 60))
 
                     let process = Process()
                     process.executableURL = URL(fileURLWithPath: "/usr/bin/tail")
@@ -1440,14 +1440,16 @@ extension CybS3CLI {
     // MARK: - Test Command
 
     struct Test: AsyncParsableCommand {
-        static var configuration = CommandConfiguration(
-            commandName: "test",
-            abstract: "Run integration and security tests",
-            subcommands: [
-                Integration.self,
-                SecurityCmd.self,
-            ]
-        )
+        static var configuration: CommandConfiguration {
+            return CommandConfiguration(
+                commandName: "test",
+                abstract: "Run integration and security tests",
+                subcommands: [
+                    Integration.self,
+                    // SecurityCmd.self, // TODO: Add back when forward reference is fixed
+                ]
+            )
+        }
 
         struct Integration: AsyncParsableCommand {
             static let configuration = CommandConfiguration(

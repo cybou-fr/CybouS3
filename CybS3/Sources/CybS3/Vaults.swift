@@ -254,7 +254,7 @@ extension CybS3CLI.Vaults {
         var serverEndpoint: String = "http://127.0.0.1:8080"
 
         @Flag(name: .long, help: "Create bucket if it doesn't exist")
-        var createBucket: Bool = true
+        var createBucket: Bool = false
 
         @Flag(name: .long, help: "Setup server-side encryption")
         var enableSSE: Bool = false
@@ -501,7 +501,7 @@ extension CybS3CLI.Vaults {
                         defer { try? client.shutdown() }
 
                         let request = HTTPClientRequest(url: server as String)
-                        let response = try await client.execute(request, deadline: .now() + .seconds(5))
+                        let response: HTTPClientResponse = try await client.execute(request, deadline: .distantFuture)
                         print("      Server: ✅ (HTTP \(response.status.code))")
                     } catch {
                         print("      Server: ❌ (unreachable)")
