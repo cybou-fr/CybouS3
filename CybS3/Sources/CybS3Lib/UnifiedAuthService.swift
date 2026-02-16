@@ -158,5 +158,4 @@ public enum UnifiedAuthError: Error, LocalizedError {
             return "Authentication sync failed: \(reason)"
         }
     }
-}</content>
-<parameter name="filePath">/home/user/dev/CybouS3/CybS3/Sources/CybS3Lib/UnifiedAuthService.swift
+}

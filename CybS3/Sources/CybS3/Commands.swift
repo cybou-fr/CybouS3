@@ -1440,12 +1440,12 @@ extension CybS3CLI {
     // MARK: - Test Command
 
     struct Test: AsyncParsableCommand {
-        static let configuration = CommandConfiguration(
+        static var configuration = CommandConfiguration(
             commandName: "test",
             abstract: "Run integration and security tests",
             subcommands: [
                 Integration.self,
-                Security.self,
+                SecurityCmd.self,
             ]
         )
 
@@ -1681,7 +1681,7 @@ extension CybS3CLI {
             }
         }
 
-        struct Security: AsyncParsableCommand {
+        struct SecurityCmd: AsyncParsableCommand {
             static let configuration = CommandConfiguration(
                 commandName: "security",
                 abstract: "Run comprehensive security tests",

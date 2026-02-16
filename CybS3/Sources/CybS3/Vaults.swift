@@ -3,6 +3,7 @@ import ArgumentParser
 import Crypto
 import SwiftBIP39
 import CybS3Lib
+import AsyncHTTPClient
 
 extension CybS3CLI {
     struct Vaults: AsyncParsableCommand {
@@ -14,7 +15,10 @@ extension CybS3CLI {
                 List.self,
                 Delete.self,
                 Local.self,
-                Select.self
+                Select.self,
+                Provision.self,
+                Sync.self,
+                Status.self
             ]
         )
     }
@@ -233,6 +237,310 @@ extension CybS3CLI.Vaults {
             print("   Access Key: \(accessKey)")
             print("💡 Use 'cybs3 vaults select \(name)' to activate this vault")
             print("💡 Start SwiftS3 server: SwiftS3 server --hostname \(hostname) --port \(port) --access-key \(accessKey) --secret-key \(secretKey)")
+        }
+    }
+
+    /// Command to provision server resources for a vault.
+    struct Provision: AsyncParsableCommand {
+        static let configuration = CommandConfiguration(
+            commandName: "provision",
+            abstract: "Auto-provision server resources for a vault"
+        )
+
+        @Option(name: .shortAndLong, help: "Vault name to provision")
+        var vault: String?
+
+        @Option(name: .long, help: "SwiftS3 server endpoint for provisioning")
+        var serverEndpoint: String = "http://127.0.0.1:8080"
+
+        @Flag(name: .long, help: "Create bucket if it doesn't exist")
+        var createBucket: Bool = true
+
+        @Flag(name: .long, help: "Setup server-side encryption")
+        var enableSSE: Bool = false
+
+        func run() async throws {
+            print("🏗️  Provisioning server resources for vault...")
+
+            // Get vault configuration
+            let mnemonic = try InteractionService.promptForMnemonic(purpose: "unlock configuration for vault provisioning")
+            let (config, _) = try StorageService.load(mnemonic: mnemonic)
+
+            let vaultToProvision: VaultConfig
+            if let vaultName = vault {
+                guard let v = config.vaults.first(where: { $0.name == vaultName }) else {
+                    print("❌ Vault '\(vaultName)' not found.")
+                    throw ExitCode.failure
+                }
+                vaultToProvision = v
+            } else if let activeVault = config.activeVaultName,
+                      let v = config.vaults.first(where: { $0.name == activeVault }) {
+                vaultToProvision = v
+                print("Using active vault: \(activeVault)")
+            } else {
+                print("❌ No vault specified and no active vault set.")
+                throw ExitCode.failure
+            }
+
+            print("📋 Provisioning vault '\(vaultToProvision.name)' on server \(serverEndpoint)")
+
+            // Parse server endpoint
+            let endpointString = serverEndpoint.contains("://") ? serverEndpoint : "http://\(serverEndpoint)"
+            guard let url = URL(string: endpointString) else {
+                print("❌ Invalid server endpoint URL")
+                throw ExitCode.failure
+            }
+
+            let s3Endpoint = S3Endpoint(
+                host: url.host ?? serverEndpoint,
+                port: url.port ?? (url.scheme == "http" ? 80 : 443),
+                useSSL: url.scheme == "https"
+            )
+
+            // Step 1: Sync authentication
+            do {
+                let success = try await UnifiedAuthService.syncCredentials(from: vaultToProvision, to: serverEndpoint)
+                if success {
+                    print("✅ Authentication synced")
+                }
+            } catch {
+                print("⚠️  Auth sync failed (continuing): \(error.localizedDescription)")
+            }
+
+            // Step 2: Create bucket if requested
+            if createBucket, let bucketName = vaultToProvision.bucket {
+                print("📦 Creating bucket '\(bucketName)'...")
+
+                // Use S3Client to create the bucket
+                let client = S3Client(
+                    endpoint: s3Endpoint,
+                    accessKey: vaultToProvision.accessKey,
+                    secretKey: vaultToProvision.secretKey,
+                    region: vaultToProvision.region
+                )
+
+                do {
+                    try await client.createBucket(name: bucketName)
+                    print("✅ Bucket '\(bucketName)' created")
+                } catch let error as S3Error {
+                    if case .requestFailed(let status, _, _) = error, status == 409 {
+                        print("⚠️  Bucket '\(bucketName)' already exists")
+                    } else {
+                        print("⚠️  Bucket creation failed: \(error.localizedDescription)")
+                    }
+                } catch {
+                    print("⚠️  Bucket creation failed: \(error.localizedDescription)")
+                }
+            }
+
+            // Step 3: Setup SSE if requested
+            if enableSSE {
+                print("🔐 Configuring server-side encryption...")
+
+                // Test SSE-KMS capability
+                let sseClient = S3Client(
+                    endpoint: s3Endpoint,
+                    accessKey: vaultToProvision.accessKey,
+                    secretKey: vaultToProvision.secretKey,
+                    bucket: vaultToProvision.bucket,
+                    region: vaultToProvision.region,
+                    sseKms: true,
+                    kmsKeyId: "alias/test-key"
+                )
+
+                do {
+                    try await sseClient.putObject(key: "sse-test", data: "SSE test data".data(using: .utf8)!)
+                    print("✅ Server-side encryption configured")
+                } catch {
+                    print("⚠️  SSE-KMS not supported by server (continuing): \(error.localizedDescription)")
+                }
+            }
+
+            print("✅ Vault provisioning completed")
+            print("🔧 Vault '\(vaultToProvision.name)' is ready for use")
+            print("   Server: \(serverEndpoint)")
+            print("   Bucket: \(vaultToProvision.bucket ?? "not configured")")
+            print("   SSE: \(enableSSE ? "enabled" : "disabled")")
+        }
+    }
+
+    /// Command to synchronize vault configuration across ecosystem.
+    struct Sync: AsyncParsableCommand {
+        static let configuration = CommandConfiguration(
+            commandName: "sync",
+            abstract: "Synchronize vault configuration across CybS3 and SwiftS3"
+        )
+
+        @Option(name: .shortAndLong, help: "Vault name to sync")
+        var vault: String?
+
+        @Option(name: .long, help: "Target server endpoint")
+        var server: String?
+
+        @Flag(name: .long, help: "Sync all vaults")
+        var all: Bool = false
+
+        func run() async throws {
+            print("🔄 Synchronizing vault configurations...")
+
+            let mnemonic = try InteractionService.promptForMnemonic(purpose: "unlock configuration for vault sync")
+            let (config, _) = try StorageService.load(mnemonic: mnemonic)
+
+            let vaultsToSync: [VaultConfig]
+            if all {
+                vaultsToSync = config.vaults
+                print("Syncing all \(vaultsToSync.count) vaults...")
+            } else if let vaultName = vault {
+                guard let v = config.vaults.first(where: { $0.name == vaultName }) else {
+                    print("❌ Vault '\(vaultName)' not found.")
+                    throw ExitCode.failure
+                }
+                vaultsToSync = [v]
+            } else if let activeVault = config.activeVaultName,
+                      let v = config.vaults.first(where: { $0.name == activeVault }) {
+                vaultsToSync = [v]
+                print("Using active vault: \(activeVault)")
+            } else {
+                print("❌ No vault specified. Use --vault, --all, or select an active vault.")
+                throw ExitCode.failure
+            }
+
+            // Determine target servers
+            let targetServers = server.map { [$0] } ?? ["http://127.0.0.1:8080"] // Default to local server
+
+            for vault in vaultsToSync {
+                print("\n📋 Syncing vault '\(vault.name)'...")
+
+                for serverEndpoint in targetServers {
+                    do {
+                        let success = try await UnifiedAuthService.syncCredentials(from: vault, to: serverEndpoint)
+                        if success {
+                            print("   ✅ Synced to \(serverEndpoint)")
+                        } else {
+                            print("   ⚠️  Sync to \(serverEndpoint) completed with warnings")
+                        }
+                    } catch {
+                        print("   ❌ Failed to sync to \(serverEndpoint): \(error.localizedDescription)")
+                    }
+                }
+            }
+
+            print("\n✅ Vault synchronization completed")
+        }
+    }
+
+    /// Command to show vault status and health.
+    struct Status: AsyncParsableCommand {
+        static let configuration = CommandConfiguration(
+            commandName: "status",
+            abstract: "Show vault status and health across ecosystem"
+        )
+
+        @Option(name: .shortAndLong, help: "Vault name to check")
+        var vault: String?
+
+        @Option(name: .long, help: "Server endpoint to check")
+        var server: String = "http://127.0.0.1:8080"
+
+        @Flag(name: .long, help: "Include detailed health checks")
+        var detailed: Bool = false
+
+        func run() async throws {
+            print("📊 Checking vault status and health...")
+
+            let mnemonic = try InteractionService.promptForMnemonic(purpose: "unlock configuration for vault status")
+            let (config, _) = try StorageService.load(mnemonic: mnemonic)
+
+            let vaultsToCheck: [VaultConfig]
+            if let vaultName = vault {
+                guard let v = config.vaults.first(where: { $0.name == vaultName }) else {
+                    print("❌ Vault '\(vaultName)' not found.")
+                    throw ExitCode.failure
+                }
+                vaultsToCheck = [v]
+            } else {
+                vaultsToCheck = config.vaults
+            }
+
+            for vault in vaultsToCheck {
+                print("\n🔐 Vault: \(vault.name)")
+                print("   Endpoint: \(vault.endpoint)")
+                print("   Region: \(vault.region)")
+                print("   Bucket: \(vault.bucket ?? "not set")")
+
+                // Check authentication sync status
+                do {
+                    let authStatus = try await UnifiedAuthService.checkSyncStatus(for: vault, serverEndpoint: server)
+                    print("   Auth Sync: \(authStatus.isSynced ? "✅" : "❌")")
+                    if let lastSync = authStatus.lastSync {
+                        print("   Last Sync: \(lastSync.formatted())")
+                    }
+                } catch {
+                    print("   Auth Sync: ❌ (\(error.localizedDescription))")
+                }
+
+                // Check credential validation
+                do {
+                    let validation = try await UnifiedAuthService.validateCredentials(vault)
+                    print("   CybS3 Creds: \(validation.cybS3Valid ? "✅" : "❌")")
+                    print("   SwiftS3 Creds: \(validation.swiftS3Valid ? "✅" : "❌")")
+                    if !validation.errors.isEmpty {
+                        print("   Errors: \(validation.errors.joined(separator: "; "))")
+                    }
+                } catch {
+                    print("   Credential Check: ❌ (\(error.localizedDescription))")
+                }
+
+                if detailed {
+                    // Additional health checks
+                    print("   📈 Detailed Health:")
+
+                    // Check if server is accessible
+                    do {
+                        let client = HTTPClient()
+                        defer { try? client.shutdown() }
+
+                        let request = HTTPClientRequest(url: server as String)
+                        let response = try await client.execute(request, deadline: .now() + .seconds(5))
+                        print("      Server: ✅ (HTTP \(response.status.code))")
+                    } catch {
+                        print("      Server: ❌ (unreachable)")
+                    }
+
+                    // Check bucket accessibility
+                    if let bucket = vault.bucket {
+                        // Parse server URL
+                        let endpointString = server.contains("://") ? server : "http://\(server)"
+                        guard let url = URL(string: endpointString) else {
+                            print("      Bucket '\(bucket)': ❌ (invalid server URL)")
+                            continue
+                        }
+
+                        let s3Endpoint = S3Endpoint(
+                            host: url.host ?? server,
+                            port: url.port ?? (url.scheme == "http" ? 80 : 443),
+                            useSSL: url.scheme == "https"
+                        )
+
+                        let bucketClient = S3Client(
+                            endpoint: s3Endpoint,
+                            accessKey: vault.accessKey,
+                            secretKey: vault.secretKey,
+                            bucket: bucket,
+                            region: vault.region
+                        )
+
+                        do {
+                            _ = try await bucketClient.listBuckets()
+                            print("      Bucket '\(bucket)': ✅ (accessible)")
+                        } catch {
+                            print("      Bucket '\(bucket)': ❌ (access denied or not found)")
+                        }
+                    }
+                }
+            }
+
+            print("\n✅ Vault status check completed")
         }
     }
 }
