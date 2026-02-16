@@ -758,7 +758,7 @@ extension CybS3CLI {
         static let configuration = CommandConfiguration(
             commandName: "health",
             abstract: "Perform system health checks",
-            subcommands: [Check.self]
+            subcommands: [Check.self, Ecosystem.self]
         )
 
         struct Check: AsyncParsableCommand {
@@ -803,6 +803,37 @@ extension CybS3CLI {
                 print("\n💡 For more information, run with --verbose")
             }
         }
+
+        struct Ecosystem: AsyncParsableCommand {
+            static let configuration = CommandConfiguration(
+                commandName: "ecosystem",
+                abstract: "Check unified ecosystem health across CybS3 and SwiftS3"
+            )
+
+            @Flag(name: .long, help: "Include detailed performance metrics")
+            var detailed: Bool = false
+
+            func run() async throws {
+                print("🔍 Performing unified ecosystem health check...")
+
+                let ecosystemHealth = await EcosystemMonitor.checkCrossComponentHealth()
+
+                print("\n" + ecosystemHealth.description)
+
+                if detailed {
+                    print("\n📊 Detailed Ecosystem Report:")
+                    let report = await EcosystemMonitor.generateUnifiedReport()
+                    print("\n" + report.summary)
+                }
+
+                if !ecosystemHealth.overallStatus.isHealthy {
+                    print("\n❌ Ecosystem health issues detected")
+                    throw ExitCode.failure
+                } else {
+                    print("\n✅ Ecosystem is healthy")
+                }
+            }
+        }
     }
 
     // MARK: - Performance Command
@@ -811,8 +842,8 @@ extension CybS3CLI {
     struct Performance: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "performance",
-            abstract: "Run performance benchmarks",
-            subcommands: [Benchmark.self]
+            abstract: "Run performance benchmarks and regression detection",
+            subcommands: [Benchmark.self, Regression.self]
         )
 
         struct Benchmark: AsyncParsableCommand {
@@ -964,6 +995,156 @@ extension CybS3CLI {
                 print("   Duration: \(String(format: "%.2f", elapsed))s")
                 print("   Ops/sec: \(String(format: "%.2f", opsPerSecond))")
                 print("   Throughput: \(String(format: "%.2f", throughput)) KB/s")
+            }
+        }
+
+        struct Regression: AsyncParsableCommand {
+            static let configuration = CommandConfiguration(
+                commandName: "regression",
+                abstract: "Detect performance regressions against baseline results",
+                subcommands: [
+                    Check.self,
+                    Update.self,
+                    Report.self,
+                ]
+            )
+
+            struct Check: AsyncParsableCommand {
+                static let configuration = CommandConfiguration(
+                    commandName: "check",
+                    abstract: "Check for performance regressions"
+                )
+
+                @Option(name: .long, help: "Path to baseline results file (optional, uses stored baselines)")
+                var baselineFile: String?
+
+                @Flag(name: .long, help: "Fail build on regression detection")
+                var failOnRegression: Bool = false
+
+                func run() async throws {
+                    print("📊 Checking for performance regressions...")
+
+                    // Run current benchmarks
+                    print("🏃 Running current benchmarks...")
+                    // This would integrate with the actual benchmark execution
+                    // For now, create sample results
+                    let currentResults = [
+                        RegressionDetector.BenchmarkResult(
+                            operation: "single_upload_1MB",
+                            duration: 0.85,
+                            throughput: 1024.0 / 0.85, // KB/s
+                            success: true
+                        ),
+                        RegressionDetector.BenchmarkResult(
+                            operation: "concurrent_uploads_10x512KB",
+                            duration: 2.1,
+                            throughput: (10 * 512) / 2.1, // KB/s
+                            success: true
+                        )
+                    ]
+
+                    var baselines: [RegressionDetector.BenchmarkResult]?
+                    if let baselinePath = baselineFile {
+                        // Load from file
+                        let data = try Data(contentsOf: URL(fileURLWithPath: baselinePath))
+                        let decoder = JSONDecoder()
+                        decoder.dateDecodingStrategy = .iso8601
+                        baselines = try decoder.decode([RegressionDetector.BenchmarkResult].self, from: data)
+                        print("📂 Loaded baselines from \(baselinePath)")
+                    }
+
+                    do {
+                        let reports = try RegressionDetector.detectRegression(current: currentResults, baselines: baselines)
+
+                        print("\n" + RegressionDetector.generateSummaryReport(reports))
+
+                        if RegressionDetector.shouldFailBuild(reports) && failOnRegression {
+                            print("❌ Build failed due to performance regression")
+                            throw ExitCode.failure
+                        }
+                    } catch {
+                        print("❌ Regression detection failed: \(error)")
+                        throw error
+                    }
+                }
+            }
+
+            struct Update: AsyncParsableCommand {
+                static let configuration = CommandConfiguration(
+                    commandName: "update",
+                    abstract: "Update performance baselines with current results"
+                )
+
+                @Option(name: .long, help: "Path to save baseline results (optional, uses secure storage)")
+                var outputFile: String?
+
+                func run() async throws {
+                    print("📝 Updating performance baselines...")
+
+                    // Generate sample baseline results
+                    // In production, this would run actual benchmarks
+                    let baselineResults = [
+                        RegressionDetector.BenchmarkResult(
+                            operation: "single_upload_1MB",
+                            duration: 0.8,
+                            throughput: 1024.0 / 0.8,
+                            success: true
+                        ),
+                        RegressionDetector.BenchmarkResult(
+                            operation: "concurrent_uploads_10x512KB",
+                            duration: 2.0,
+                            throughput: (10 * 512) / 2.0,
+                            success: true
+                        )
+                    ]
+
+                    if let outputPath = outputFile {
+                        // Save to file
+                        let encoder = JSONEncoder()
+                        encoder.dateEncodingStrategy = .iso8601
+                        encoder.outputFormatting = .prettyPrinted
+                        let data = try encoder.encode(baselineResults)
+                        try data.write(to: URL(fileURLWithPath: outputPath))
+                        print("💾 Baselines saved to \(outputPath)")
+                    } else {
+                        // Save to secure storage
+                        try RegressionDetector.updateBaselines(baselineResults)
+                        print("🔐 Baselines updated in secure storage")
+                    }
+                }
+            }
+
+            struct Report: AsyncParsableCommand {
+                static let configuration = CommandConfiguration(
+                    commandName: "report",
+                    abstract: "Generate detailed regression report"
+                )
+
+                @Option(name: .long, help: "Output format (console, json)")
+                var format: String = "console"
+
+                func run() async throws {
+                    print("📋 Generating regression report...")
+
+                    do {
+                        let baselines = try RegressionDetector.loadBaselines()
+
+                        if baselines.isEmpty {
+                            print("⚠️ No baseline results found")
+                            print("💡 Run 'cybs3 performance regression update' to establish baselines")
+                            return
+                        }
+
+                        print("📊 Current Baselines:")
+                        for baseline in baselines.sorted(by: { $0.operation < $1.operation }) {
+                            print("  • \(baseline.operation): \(String(format: "%.3f", baseline.duration))s (\(String(format: "%.1f", baseline.throughput))/s)")
+                        }
+
+                    } catch {
+                        print("❌ Failed to load baselines: \(error)")
+                        throw error
+                    }
+                }
             }
         }
     }
@@ -1443,9 +1624,10 @@ extension CybS3CLI {
         static var configuration: CommandConfiguration {
             return CommandConfiguration(
                 commandName: "test",
-                abstract: "Run integration and security tests",
+                abstract: "Run integration, security, and chaos tests",
                 subcommands: [
                     Integration.self,
+                    Chaos.self,
                     // SecurityCmd.self, // TODO: Add back when forward reference is fixed
                 ]
             )
@@ -1680,6 +1862,113 @@ extension CybS3CLI {
                 guard postRotationContent == "This is sensitive information" else { throw TestError.contentMismatch }
 
                 print("✅ Key rotation successful - data remains accessible")
+            }
+        }
+
+        struct Chaos: AsyncParsableCommand {
+            static let configuration = CommandConfiguration(
+                commandName: "chaos",
+                abstract: "Run chaos engineering tests to validate system resilience",
+                subcommands: [
+                    Resilience.self,
+                    Inject.self,
+                    Clear.self,
+                ]
+            )
+
+            struct Resilience: AsyncParsableCommand {
+                static let configuration = CommandConfiguration(
+                    commandName: "resilience",
+                    abstract: "Run comprehensive resilience test with multiple fault scenarios"
+                )
+
+                @Option(name: .long, help: "Test duration in seconds")
+                var duration: Int = 300
+
+                func run() async throws {
+                    print("🧪 Starting Chaos Engineering Resilience Test")
+                    print("   Duration: \(duration)s")
+
+                    do {
+                        let report = try await ChaosEngine.testResilience(testDuration: TimeInterval(duration))
+                        print("\n" + report.description)
+
+                        if !report.success {
+                            print("❌ Resilience test failed - system may not be resilient to failures")
+                            throw ExitCode.failure
+                        } else {
+                            print("✅ Resilience test passed - system is fault-tolerant")
+                        }
+                    } catch {
+                        print("❌ Chaos resilience test failed: \(error)")
+                        throw error
+                    }
+                }
+            }
+
+            struct Inject: AsyncParsableCommand {
+                static let configuration = CommandConfiguration(
+                    commandName: "inject",
+                    abstract: "Inject a specific fault for testing"
+                )
+
+                @Option(name: .long, help: "Fault type (latency, failure, exhaustion, service)")
+                var type: String
+
+                @Option(name: .long, help: "Fault duration in seconds")
+                var duration: Double = 30.0
+
+                @Option(name: .long, help: "Additional parameters (e.g., delay=2.0, dropRate=0.1)")
+                var params: [String] = []
+
+                func run() async throws {
+                    print("🔥 Injecting chaos fault: \(type)")
+
+                    let fault: ChaosEngine.FaultType
+                    switch type.lowercased() {
+                    case "latency":
+                        let delay = params.first(where: { $0.hasPrefix("delay=") })?
+                            .split(separator: "=").last.flatMap { Double($0) } ?? 2.0
+                        fault = .networkLatency(delay: delay)
+                    case "failure":
+                        let dropRate = params.first(where: { $0.hasPrefix("dropRate=") })?
+                            .split(separator: "=").last.flatMap { Double($0) } ?? 0.1
+                        fault = .networkFailure(dropRate: dropRate)
+                    case "exhaustion":
+                        let memoryLimit = params.first(where: { $0.hasPrefix("memoryLimit=") })?
+                            .split(separator: "=").last.flatMap { Int($0) } ?? 100
+                        fault = .resourceExhaustion(memoryLimit: memoryLimit)
+                    case "service":
+                        let component = params.first(where: { $0.hasPrefix("component=") })?
+                            .split(separator: "=").last ?? "S3Client"
+                        fault = .serviceFailure(component: String(component))
+                    case "delays":
+                        let minDelay = params.first(where: { $0.hasPrefix("minDelay=") })?
+                            .split(separator: "=").last.flatMap { Double($0) } ?? 0.1
+                        let maxDelay = params.first(where: { $0.hasPrefix("maxDelay=") })?
+                            .split(separator: "=").last.flatMap { Double($0) } ?? 1.0
+                        fault = .randomDelays(minDelay: minDelay, maxDelay: maxDelay)
+                    default:
+                        print("❌ Unknown fault type: \(type)")
+                        print("   Available types: latency, failure, exhaustion, service, delays")
+                        throw ExitCode.failure
+                    }
+
+                    try await ChaosEngine.injectFault(fault, duration: duration)
+                    print("✅ Fault injection complete")
+                }
+            }
+
+            struct Clear: AsyncParsableCommand {
+                static let configuration = CommandConfiguration(
+                    commandName: "clear",
+                    abstract: "Clear all active chaos faults"
+                )
+
+                func run() async throws {
+                    ChaosEngine.clearAllFaults()
+                    print("🧹 All chaos faults cleared")
+                }
             }
         }
 

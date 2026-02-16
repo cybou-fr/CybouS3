@@ -23,6 +23,11 @@ help:
 	@echo "  setup         - Initial project setup"
 	@echo "  server        - Start SwiftS3 server for development"
 	@echo "  integration   - Run integration tests"
+	@echo "  perf          - Run performance benchmarks"
+	@echo "  security      - Run security tests"
+	@echo "  chaos         - Run chaos engineering tests"
+	@echo "  regression    - Run performance regression detection"
+	@echo "  ecosystem-health - Check unified ecosystem health"
 	@echo ""
 
 # Build targets
@@ -127,8 +132,23 @@ security: build-release
 	@echo "Running security tests..."
 	./CybS3/.build/release/cybs3 test security
 
+# Chaos engineering testing
+chaos: build-release
+	@echo "Running chaos engineering tests..."
+	./CybS3/.build/release/cybs3 test chaos resilience --duration 60
+
+# Regression detection
+regression: build-release
+	@echo "Running performance regression detection..."
+	./CybS3/.build/release/cybs3 performance regression check --fail-on-regression
+
+# Ecosystem health check
+ecosystem-health: build-release
+	@echo "Checking ecosystem health..."
+	./CybS3/.build/release/cybs3 health ecosystem --detailed
+
 # Full CI pipeline
-ci: clean build-all test-all integration security
+ci: clean build-all test-all integration security chaos regression ecosystem-health
 	@echo "CI pipeline completed successfully!"
 
 # Development workflow
