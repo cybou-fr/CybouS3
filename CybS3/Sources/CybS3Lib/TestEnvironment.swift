@@ -1,4 +1,6 @@
 import Foundation
+import AsyncHTTPClient
+import NIOCore
 
 /// Test environment setup for integration tests.
 public struct TestEnvironment {
@@ -68,8 +70,12 @@ public struct TestEnvironment {
         guard let url = URL(string: endpoint) else { return false }
         
         do {
-            let (_, response) = try await URLSession.shared.data(from: url)
-            return (response as? HTTPURLResponse)?.statusCode == 200
+            let client = HTTPClient()
+            defer { try? client.shutdown() }
+            
+            let request = HTTPClientRequest(url: url.absoluteString)
+            let response = try await client.execute(request, deadline: .now() + .seconds(5))
+            return response.status == .ok
         } catch {
             return false
         }

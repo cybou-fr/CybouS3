@@ -4,6 +4,7 @@ import Crypto
 import CybS3Lib
 import Foundation
 import NIO
+import NIOCore
 import SwiftBIP39
 
 /// Global options available to all subcommands.
@@ -904,14 +905,29 @@ extension CybS3CLI {
                 let testData = Data(repeating: 0x41, count: fileSize * 1024) // 'A' repeated
                 
                 let startTime = Date()
-                var operations = 0
+                
+                // Actor to safely manage operations count across concurrent tasks
+                actor OperationsCounter {
+                    var count = 0
+                    
+                    func increment() {
+                        count += 1
+                    }
+                    
+                    func getCount() -> Int {
+                        count
+                    }
+                }
+                
+                let operationsCounter = OperationsCounter()
                 
                 // Run concurrent uploads
                 try await withThrowingTaskGroup(of: Void.self) { group in
                     for i in 0..<concurrency {
                         group.addTask {
                             while Date().timeIntervalSince(startTime) < Double(duration) {
-                                let key = "benchmark-\(i)-\(operations).dat"
+                                let currentOps = await operationsCounter.getCount()
+                                let key = "benchmark-\(i)-\(currentOps).dat"
                                 
                                 let uploadProcess = Process()
                                 uploadProcess.executableURL = URL(fileURLWithPath: "/usr/local/bin/cybs3")
@@ -929,7 +945,7 @@ extension CybS3CLI {
                                 await uploadProcess.waitUntilExit()
                                 
                                 if uploadProcess.terminationStatus == 0 {
-                                    operations += 1
+                                    await operationsCounter.increment()
                                 }
                             }
                         }
@@ -938,6 +954,7 @@ extension CybS3CLI {
                     try await group.waitForAll()
                 }
                 
+                let operations = await operationsCounter.getCount()
                 let elapsed = Date().timeIntervalSince(startTime)
                 let opsPerSecond = Double(operations) / elapsed
                 let throughput = Double(operations * fileSize) / elapsed / 1024.0 // KB/s
@@ -1085,11 +1102,12 @@ extension CybS3CLI {
 
                     // Try to connect and get basic info
                     do {
-                        let url = URL(string: "http://127.0.0.1:\(port)/")!
-                        let (_, response) = try await URLSession.shared.data(from: url)
-                        if let httpResponse = response as? HTTPURLResponse {
-                            print("   Status: \(httpResponse.statusCode)")
-                        }
+                        let client = HTTPClient()
+                        defer { try? client.shutdown() }
+                        
+                        let request = HTTPClientRequest(url: "http://127.0.0.1:\(port)/")
+                        let response = try await client.execute(request, deadline: .now() + .seconds(5))
+                        print("   Status: \(response.status.code)")
                     } catch {
                         print("   Status: Unable to connect")
                     }

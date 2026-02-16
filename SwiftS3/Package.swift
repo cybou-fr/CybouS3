@@ -6,7 +6,8 @@ import PackageDescription
 let package = Package(
     name: "SwiftS3",
     platforms: [
-        .macOS(.v14)
+        .macOS(.v14),
+        .iOS(.v17)
     ],
     products: [
         .executable(name: "SwiftS3", targets: ["SwiftS3"])

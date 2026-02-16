@@ -10,7 +10,11 @@ public enum KeychainError: Error, LocalizedError {
     case itemNotFound
     case accessControlCreationFailed
     case biometricNotAvailable
+    #if os(macOS)
     case operationFailed(status: OSStatus)
+    #else
+    case operationFailed(status: Int)
+    #endif
     
     public var errorDescription: String? {
         switch self {
@@ -23,8 +27,10 @@ public enum KeychainError: Error, LocalizedError {
         case .accessControlCreationFailed:
             return "❌ Failed to create access control for Keychain."
         case .biometricNotAvailable:
-            return "❌ Biometric authentication not available on this device."        case .operationFailed(let status):
-            return "❌ Keychain operation failed with status: \(status)"        }
+            return "❌ Biometric authentication not available on this device."
+        case .operationFailed(let status):
+            return "❌ Keychain operation failed with status: \(status)"
+        }
     }
 }
 

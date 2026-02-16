@@ -1,10 +1,10 @@
 import AsyncHTTPClient
 import Crypto
-import CryptoKit
 import Foundation
 import Hummingbird
 import Logging
 import NIO
+import NIOCore
 import _NIOFileSystem
 
 // CRC32 extension for Data
@@ -1471,14 +1471,17 @@ actor FileSystemStorage: StorageBackend {
             throw S3Error.invalidArgument
         }
 
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = eventData
-
-        let (_, response) = try await URLSession.shared.data(for: request)
+        let client = HTTPClient()
+        defer { try? client.shutdown() }
         
-        if let httpResponse = response as? HTTPURLResponse, !(200...299).contains(httpResponse.statusCode) {
+        var request = HTTPClientRequest(url: url.absoluteString)
+        request.method = .POST
+        request.headers.add(name: "Content-Type", value: "application/json")
+        request.body = .bytes(eventData)
+        
+        let response = try await client.execute(request, deadline: .now() + .seconds(30))
+        
+        if !(200...299).contains(response.status.code) {
             throw S3Error.internalError
         }
     }

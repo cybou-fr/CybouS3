@@ -51,7 +51,11 @@ public struct EnhancedKeyDerivation {
         
         // Add some random bytes
         var randomBytes = [UInt8](repeating: 0, count: 16)
+        #if os(macOS)
         _ = SecRandomCopyBytes(kSecRandomDefault, randomBytes.count, &randomBytes)
+        #else
+        arc4random_buf(&randomBytes, randomBytes.count)
+        #endif
         entropy.append(contentsOf: randomBytes)
         
         return entropy

@@ -12,7 +12,9 @@ public struct SecureMemory {
         memset_s(buffer.baseAddress, buffer.count, 0, buffer.count)
         #elseif os(Linux)
         // Use explicit_bzero on Linux
-        explicit_bzero(buffer.baseAddress, buffer.count)
+        if let baseAddress = buffer.baseAddress {
+            explicit_bzero(baseAddress, buffer.count)
+        }
         #else
         // Fallback to regular memset (not secure but better than nothing)
         memset(buffer.baseAddress, 0, buffer.count)

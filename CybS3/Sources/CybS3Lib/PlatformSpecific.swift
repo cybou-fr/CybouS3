@@ -4,7 +4,7 @@ import Foundation
 public struct PlatformSpecific {
     /// Optimal thread count for concurrent operations.
     public static var optimalThreadCount: Int {
-        #if os(macOS)
+        #if os(macOS) || os(Linux)
         return min(ProcessInfo.processInfo.activeProcessorCount, 16)
         #elseif os(Windows)
         return min(System.coreCount, 16)
@@ -33,7 +33,7 @@ public struct PlatformSpecific {
     
     /// Get system memory information.
     public static var systemMemoryGB: Double {
-        #if os(macOS)
+        #if os(macOS) || os(Linux)
         let processInfo = ProcessInfo.processInfo
         return Double(processInfo.physicalMemory) / (1024 * 1024 * 1024)
         #else

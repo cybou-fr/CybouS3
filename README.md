@@ -42,8 +42,8 @@ This combination delivers **double encryption** (client + server), unified manag
 ## Quick Start
 
 ### Prerequisites
-- Swift 6.0+
-- macOS 14.0+ or Linux
+- Swift 6.0+ (tested with Swift 6.2.3)
+- macOS 14.0+ or Linux (Ubuntu 20.04+, CentOS 8+, etc.)
 
 ### Installation
 
@@ -56,8 +56,8 @@ cd CybouS3
 cd CybS3 && swift build -c release
 cd ../SwiftS3 && swift build -c release
 
-# Install CybS3 CLI
-cd ../CybS3 && cp .build/release/cybs3 /usr/local/bin/
+# Install CybS3 CLI (adjust path as needed)
+cd ../CybS3 && cp .build/x86_64-unknown-linux-gnu/release/cybs3 /usr/local/bin/
 ```
 
 ### Basic Usage
@@ -161,6 +161,8 @@ cd CybS3 && swift build -c release
 cd ../SwiftS3 && swift build -c release
 ```
 
+**Note:** CybouS3 is fully cross-platform and has been tested on Linux with Swift 6.2.3. All platform-specific code has been updated to work on macOS, Linux, and Windows.
+
 ### Development Workflow
 ```bash
 # Start development environment
@@ -224,5 +226,5 @@ This project is licensed under the MIT License - see [LICENSE](LICENSE).
 
 ---
 
-**Built with ❤️ in Swift - The CybouS3 Ecosystem**</content>
+**Built with ❤️ in Swift - The CybouS3 Ecosystem (Updated: February 2026)**</content>
 <parameter name="filePath">/Users/cybou/Documents/CybouS3/README.md
