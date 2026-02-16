@@ -153,7 +153,7 @@ public actor BackupManager {
 
     /// Deletes a backup configuration.
     public func deleteConfiguration(id: String) async throws {
-        try await storage.deleteConfiguration(id)
+        try await storage.deleteConfiguration(id: id)
 
         try await auditLogger.store(entry: AuditLogEntry(
             eventType: .configurationChange,

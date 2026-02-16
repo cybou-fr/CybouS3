@@ -275,7 +275,7 @@ public struct BackupJob: Codable, Sendable {
     /// Progress information.
     public var progress: BackupProgress
     /// Error message if the backup failed.
-    public let errorMessage: String?
+    public var errorMessage: String?
     /// Backup metadata.
     public let metadata: [String: String]
 
@@ -320,13 +320,13 @@ public struct BackupProgress: Codable, Sendable {
     /// Number of objects processed.
     public var objectsProcessed: Int
     /// Total number of objects to process.
-    public let objectsTotal: Int
+    public var objectsTotal: Int
     /// Number of bytes processed.
     public var bytesProcessed: Int64
     /// Total number of bytes to process.
-    public let bytesTotal: Int64
+    public var bytesTotal: Int64
     /// Current operation being performed.
-    public let currentOperation: String
+    public var currentOperation: String
 
     public init(
         objectsProcessed: Int = 0,

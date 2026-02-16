@@ -348,16 +348,15 @@ public actor DisasterRecoveryManager {
         originalConfig: BackupConfiguration,
         targetRegion: String? = nil,
         targetProvider: CloudProvider? = nil
-    ) -> CloudConfiguration {
+    ) -> CloudConfig {
         // Create a recovery configuration based on the original
         // In a real implementation, this would use predefined failover configurations
-        CloudConfiguration(
+        CloudConfig(
             provider: targetProvider ?? originalConfig.destinationConfig.provider,
+            accessKey: originalConfig.destinationConfig.accessKey,
+            secretKey: originalConfig.destinationConfig.secretKey,
             region: targetRegion ?? originalConfig.destinationConfig.region,
-            accessKeyId: originalConfig.destinationConfig.accessKeyId,
-            secretAccessKey: originalConfig.destinationConfig.secretAccessKey,
-            sessionToken: originalConfig.destinationConfig.sessionToken,
-            endpoint: originalConfig.destinationConfig.endpoint
+            customEndpoint: originalConfig.destinationConfig.customEndpoint
         )
     }
 
@@ -369,7 +368,7 @@ public actor DisasterRecoveryManager {
         return baseTimePerGB * estimatedSizeGB
     }
 
-    private func assessRecoveryRisks(_ original: BackupConfiguration, _ recovery: CloudConfiguration) -> DisasterRecoveryRiskAssessment {
+    private func assessRecoveryRisks(_ original: BackupConfiguration, _ recovery: CloudConfig) -> DisasterRecoveryRiskAssessment {
         var risks: [DisasterRecoveryRisk] = []
         var recommendations: [String] = []
 

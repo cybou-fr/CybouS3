@@ -132,7 +132,8 @@ public final class ServiceLocator {
     }
     
     /// Get the global dependency container.
-    @MainActor public static var shared: DependencyContainer {
+    @MainActor
+    public static func getShared() -> DependencyContainer {
         _container
     }
 }

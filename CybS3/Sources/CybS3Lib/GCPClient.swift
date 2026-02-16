@@ -72,7 +72,8 @@ public actor GCPClient: CloudClientProtocol {
             throw CloudClientError.operationFailed("Download failed with status \(response.status.code)")
         }
 
-        return try await response.body.collect(upTo: 100 * 1024 * 1024) // 100MB limit
+        let body = try await response.body.collect(upTo: 100 * 1024 * 1024) // 100MB limit
+        return Data(buffer: body)
     }
 
     /// List objects in the bucket.

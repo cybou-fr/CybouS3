@@ -146,7 +146,6 @@ struct GlobalOptions: ParsableArguments {
 /// The main entry point for the CybS3 Command Line Interface.
 ///
 /// CybS3 provides an S3-compatible object storage browser with client-side encryption capabilities.
-@main
 /// The main entry point for the CybS3 Command Line Interface.
 ///
 /// CybS3 provides an S3-compatible object storage browser with client-side encryption capabilities.

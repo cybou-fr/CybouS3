@@ -4,7 +4,7 @@ import Foundation
 // These will be imported when the clients are created
 
 /// Cloud provider types supported by CybouS3.
-public enum CloudProvider: String, Codable, Sendable {
+public enum CloudProvider: String, Codable, Sendable, CaseIterable {
     case aws = "aws"
     case gcp = "gcp"
     case azure = "azure"

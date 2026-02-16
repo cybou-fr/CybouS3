@@ -50,10 +50,10 @@ struct ConfigureProvider: AsyncParsableCommand {
     var provider: String
 
     @Option(name: .shortAndLong, help: "Access key or account name")
-    var accessKey: String?
+    var accessKey: String
 
     @Option(name: .shortAndLong, help: "Secret key or account key")
-    var secretKey: String?
+    var secretKey: String
 
     @Option(name: .shortAndLong, help: "Region")
     var region: String?
@@ -70,8 +70,8 @@ struct ConfigureProvider: AsyncParsableCommand {
             throw ExitCode.failure
         }
 
-        let accessKey = try accessKey ?? InteractionService.prompt("Access Key/Account Name")
-        let secretKey = try secretKey ?? InteractionService.promptSecure("Secret Key/Account Key")
+        let accessKey = accessKey
+        let secretKey = secretKey
         let region = region ?? cloudProvider.defaultRegion
 
         let config = CloudConfig(

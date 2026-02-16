@@ -1,5 +1,6 @@
 import Foundation
 import ArgumentParser
+import CybS3Lib
 
 /// Backup and disaster recovery commands.
 struct BackupCommands: ParsableCommand {
@@ -382,47 +383,45 @@ struct ListBackupJobs: ParsableCommand {
     var detailed: Bool = false
 
     func run() async throws {
-        let console = ConsoleUI()
-
         do {
-            let container = DependencyContainer.shared
-            let backupManager = try container.resolve(BackupManager.self)
+            let container = await MainActor.run { ServiceLocator.getShared() }
+            let backupManager = container.backupManager
 
             let jobs = try await backupManager.listJobs(for: configId)
 
             if jobs.isEmpty {
-                console.info("No backup jobs found for configuration \(configId)")
+                ConsoleUI.info("No backup jobs found for configuration \(configId)")
                 return
             }
 
-            console.info("Backup Jobs for Configuration \(configId):")
-            console.info(String(repeating: "=", count: 80))
+            ConsoleUI.info("Backup Jobs for Configuration \(configId):")
+            ConsoleUI.info(String(repeating: "=", count: 80))
 
             for job in jobs.sorted(by: { $0.createdAt > $1.createdAt }) {
-                console.info("Job ID: \(job.id)")
-                console.info("Status: \(job.status.rawValue)")
-                console.info("Created: \(job.createdAt.formatted())")
+                ConsoleUI.info("Job ID: \(job.id)")
+                ConsoleUI.info("Status: \(job.status.rawValue)")
+                ConsoleUI.info("Created: \(job.createdAt.formatted())")
 
                 if let completedAt = job.completedAt {
-                    console.info("Completed: \(completedAt.formatted())")
+                    ConsoleUI.info("Completed: \(completedAt.formatted())")
                 }
 
                 if detailed {
-                    console.info("Progress: \(job.progress.objectsProcessed)/\(job.progress.objectsTotal) objects")
-                    console.info("Size: \(job.progress.bytesProcessed.formattedByteCount()) / \(job.progress.bytesTotal.formattedByteCount())")
+                    ConsoleUI.info("Progress: \(job.progress.objectsProcessed)/\(job.progress.objectsTotal) objects")
+                    ConsoleUI.info("Size: \(job.progress.bytesProcessed.formattedByteCount()) / \(job.progress.bytesTotal.formattedByteCount())")
                     if let duration = job.duration {
-                        console.info("Duration: \(String(format: "%.1f", duration))s")
+                        ConsoleUI.info("Duration: \(String(format: "%.1f", duration))s")
                     }
                     if let error = job.errorMessage {
-                        console.error("Error: \(error)")
+                        ConsoleUI.error("Error: \(error)")
                     }
                 }
 
-                console.info("")
+                ConsoleUI.info("")
             }
 
         } catch {
-            console.error("Failed to list backup jobs: \(error.localizedDescription)")
+            ConsoleUI.error("Failed to list backup jobs: \(error.localizedDescription)")
             throw error
         }
     }
@@ -439,40 +438,38 @@ struct GetBackupStatus: ParsableCommand {
     var jobId: String
 
     func run() async throws {
-        let console = ConsoleUI()
-
         do {
-            let container = DependencyContainer.shared
-            let backupManager = try container.resolve(BackupManager.self)
+            let container = await MainActor.run { ServiceLocator.getShared() }
+            let backupManager = container.backupManager
 
             guard let job = try await backupManager.getJobStatus(jobId: jobId) else {
-                console.error("Backup job not found: \(jobId)")
+                ConsoleUI.error("Backup job not found: \(jobId)")
                 throw ValidationError("Job not found")
             }
 
-            console.info("Backup Job Status:")
-            console.info("Job ID: \(job.id)")
-            console.info("Configuration ID: \(job.configurationId)")
-            console.info("Status: \(job.status.rawValue)")
-            console.info("Created: \(job.createdAt.formatted())")
+            ConsoleUI.info("Backup Job Status:")
+            ConsoleUI.info("Job ID: \(job.id)")
+            ConsoleUI.info("Configuration ID: \(job.configurationId)")
+            ConsoleUI.info("Status: \(job.status.rawValue)")
+            ConsoleUI.info("Created: \(job.createdAt.formatted())")
 
             if let completedAt = job.completedAt {
-                console.info("Completed: \(completedAt.formatted())")
+                ConsoleUI.info("Completed: \(completedAt.formatted())")
             }
 
-            console.info("Progress: \(job.progress.objectsProcessed)/\(job.progress.objectsTotal) objects")
-            console.info("Size: \(job.progress.bytesProcessed.formattedByteCount()) / \(job.progress.bytesTotal.formattedByteCount())")
+            ConsoleUI.info("Progress: \(job.progress.objectsProcessed)/\(job.progress.objectsTotal) objects")
+            ConsoleUI.info("Size: \(job.progress.bytesProcessed.formattedByteCount()) / \(job.progress.bytesTotal.formattedByteCount())")
 
             if let duration = job.duration {
-                console.info("Duration: \(String(format: "%.1f", duration))s")
+                ConsoleUI.info("Duration: \(String(format: "%.1f", duration))s")
             }
 
             if let error = job.errorMessage {
-                console.error("Error: \(error)")
+                ConsoleUI.error("Error: \(error)")
             }
 
         } catch {
-            console.error("Failed to get backup status: \(error.localizedDescription)")
+            ConsoleUI.error("Failed to get backup status: \(error.localizedDescription)")
             throw error
         }
     }
@@ -486,18 +483,16 @@ struct CleanupBackups: ParsableCommand {
     )
 
     func run() async throws {
-        let console = ConsoleUI()
-
         do {
-            let container = DependencyContainer.shared
-            let backupManager = try container.resolve(BackupManager.self)
+            let container = await MainActor.run { ServiceLocator.getShared() }
+            let backupManager = container.backupManager
 
             try await backupManager.cleanupOldBackups()
 
-            console.success("Backup cleanup completed successfully")
+            ConsoleUI.success("Backup cleanup completed successfully")
 
         } catch {
-            console.error("Failed to cleanup backups: \(error.localizedDescription)")
+            ConsoleUI.error("Failed to cleanup backups: \(error.localizedDescription)")
             throw error
         }
     }
@@ -520,11 +515,9 @@ struct InitiateRecovery: ParsableCommand {
     var targetProvider: String?
 
     func run() async throws {
-        let console = ConsoleUI()
-
         do {
-            let container = DependencyContainer.shared
-            let recoveryManager = try container.resolve(DisasterRecoveryManager.self)
+            let container = await MainActor.run { ServiceLocator.getShared() }
+            let recoveryManager = container.disasterRecoveryManager
 
             let targetProviderEnum = targetProvider.flatMap { CloudProvider(rawValue: $0.lowercased()) }
 
@@ -534,20 +527,20 @@ struct InitiateRecovery: ParsableCommand {
                 targetProvider: targetProviderEnum
             )
 
-            console.success("Disaster recovery plan created")
-            console.info("Plan ID: \(plan.id)")
-            console.info("Estimated Duration: \(String(format: "%.1f", plan.estimatedDuration / 3600)) hours")
-            console.info("Risk Level: \(plan.riskAssessment.overallRisk.rawValue)")
+            ConsoleUI.success("Disaster recovery plan created")
+            ConsoleUI.info("Plan ID: \(plan.id)")
+            ConsoleUI.info("Estimated Duration: \(String(format: "%.1f", plan.estimatedDuration / 3600)) hours")
+            ConsoleUI.info("Risk Level: \(plan.riskAssessment.overallRisk.rawValue)")
 
             if !plan.riskAssessment.recommendations.isEmpty {
-                console.warning("Recommendations:")
+                ConsoleUI.warning("Recommendations:")
                 for rec in plan.riskAssessment.recommendations {
-                    console.info("  - \(rec)")
+                    ConsoleUI.info("  - \(rec)")
                 }
             }
 
         } catch {
-            console.error("Failed to initiate disaster recovery: \(error.localizedDescription)")
+            ConsoleUI.error("Failed to initiate disaster recovery: \(error.localizedDescription)")
             throw error
         }
     }
@@ -564,16 +557,14 @@ struct ExecuteRecovery: ParsableCommand {
     var planId: String
 
     func run() async throws {
-        let console = ConsoleUI()
-
         do {
             // Note: This would need the plan object, which isn't stored yet
             // For now, this is a placeholder
-            console.error("Execute recovery not yet implemented - need to store and retrieve plans")
+            ConsoleUI.error("Execute recovery not yet implemented - need to store and retrieve plans")
             throw ValidationError("Not implemented")
 
         } catch {
-            console.error("Failed to execute disaster recovery: \(error.localizedDescription)")
+            ConsoleUI.error("Failed to execute disaster recovery: \(error.localizedDescription)")
             throw error
         }
     }
@@ -590,29 +581,27 @@ struct TestRecovery: ParsableCommand {
     var configId: String
 
     func run() async throws {
-        let console = ConsoleUI()
-
         do {
-            let container = DependencyContainer.shared
-            let recoveryManager = try container.resolve(DisasterRecoveryManager.self)
+            let container = await MainActor.run { ServiceLocator.getShared() }
+            let recoveryManager = container.disasterRecoveryManager
 
             let testResult = try await recoveryManager.testRecoveryReadiness(configurationId: configId)
 
-            console.info("Disaster Recovery Test Results:")
-            console.info("Configuration ID: \(testResult.configurationId)")
-            console.info("Status: \(testResult.status.rawValue)")
-            console.info("Readiness Score: \(String(format: "%.1f", testResult.readinessScore))%")
-            console.info("Backup Available: \(testResult.backupAvailability ? "Yes" : "No")")
-            console.info("Recent Backups: \(testResult.recentBackupCount)")
-            console.info("Backup Objects: \(testResult.backupObjectCount)")
-            console.info("Recovery Location Accessible: \(testResult.recoveryLocationAccessible ? "Yes" : "No")")
+            ConsoleUI.info("Disaster Recovery Test Results:")
+            ConsoleUI.info("Configuration ID: \(testResult.configurationId)")
+            ConsoleUI.info("Status: \(testResult.status.rawValue)")
+            ConsoleUI.info("Readiness Score: \(String(format: "%.1f", testResult.readinessScore))%")
+            ConsoleUI.info("Backup Available: \(testResult.backupAvailability ? "Yes" : "No")")
+            ConsoleUI.info("Recent Backups: \(testResult.recentBackupCount)")
+            ConsoleUI.info("Backup Objects: \(testResult.backupObjectCount)")
+            ConsoleUI.info("Recovery Location Accessible: \(testResult.recoveryLocationAccessible ? "Yes" : "No")")
 
             if let error = testResult.errorMessage {
-                console.error("Error: \(error)")
+                ConsoleUI.error("Error: \(error)")
             }
 
         } catch {
-            console.error("Failed to test disaster recovery: \(error.localizedDescription)")
+            ConsoleUI.error("Failed to test disaster recovery: \(error.localizedDescription)")
             throw error
         }
     }
@@ -629,15 +618,13 @@ struct ValidateRecovery: ParsableCommand {
     var planId: String
 
     func run() async throws {
-        let console = ConsoleUI()
-
         do {
             // Note: This would need the plan object, which isn't stored yet
-            console.error("Validate recovery not yet implemented - need to store and retrieve plans")
+            ConsoleUI.error("Validate recovery not yet implemented - need to store and retrieve plans")
             throw ValidationError("Not implemented")
 
         } catch {
-            console.error("Failed to validate disaster recovery plan: \(error.localizedDescription)")
+            ConsoleUI.error("Failed to validate disaster recovery plan: \(error.localizedDescription)")
             throw error
         }
     }
@@ -690,6 +677,8 @@ private extension BackupSchedule {
             return "Weekly"
         case .monthly:
             return "Monthly"
+        case .manual:
+            return "Manual"
         }
     }
 }

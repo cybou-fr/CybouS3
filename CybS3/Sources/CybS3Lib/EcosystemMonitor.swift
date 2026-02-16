@@ -1,4 +1,5 @@
 import Foundation
+import AsyncHTTPClient
 
 /// Unified ecosystem monitoring for cross-component health and dependency validation.
 public struct EcosystemMonitor {
@@ -251,7 +252,7 @@ public struct EcosystemMonitor {
             defer { try? client.shutdown() }
 
             let request = HTTPClientRequest(url: "http://127.0.0.1:8080/_health")
-            let response = try await client.execute(request, deadline: .now() + .seconds(5))
+            let response = try await client.execute(request, timeout: .seconds(5))
 
             if response.status.code == 200 {
                 details["swiftS3_connectivity"] = "healthy"
@@ -304,7 +305,7 @@ public struct EcosystemMonitor {
             defer { try? client.shutdown() }
 
             let request = HTTPClientRequest(url: "http://127.0.0.1:8080/")
-            let response = try await client.execute(request, deadline: .now() + .seconds(5))
+            let response = try await client.execute(request, timeout: .seconds(5))
 
             return response.status.code >= 200 && response.status.code < 300
         } catch {
@@ -359,7 +360,7 @@ public struct EcosystemMonitor {
         } else if totalIssues <= 2 {
             var issues: [String] = unhealthyComponents.flatMap { status in
                 switch status {
-                case .healthy: return []
+                case .healthy: return [String]()
                 case .degraded(_, let componentIssues), .unhealthy(_, let componentIssues):
                     return componentIssues
                 }
@@ -371,7 +372,7 @@ public struct EcosystemMonitor {
         } else {
             var issues: [String] = unhealthyComponents.flatMap { status in
                 switch status {
-                case .healthy: return []
+                case .healthy: return [String]()
                 case .degraded(_, let componentIssues), .unhealthy(_, let componentIssues):
                     return componentIssues
                 }

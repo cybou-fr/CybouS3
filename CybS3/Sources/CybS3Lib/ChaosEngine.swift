@@ -4,7 +4,7 @@ import Network
 /// Chaos engineering framework for testing system resilience under failure conditions.
 public struct ChaosEngine {
     /// Types of faults that can be injected into the system.
-    public enum FaultType {
+    public enum FaultType: Sendable {
         /// Introduce network latency by delaying requests.
         case networkLatency(delay: TimeInterval)
         /// Simulate network failures by dropping packets.
@@ -40,6 +40,8 @@ public struct ChaosEngine {
         }
     }
 
+    // swiftlint:disable:next mutable_global_variable
+    @MainActor
     private static var activeFaults = [String: FaultType]()
     private static let faultQueue = DispatchQueue(label: "com.cybs3.chaos.faults")
 
@@ -49,6 +51,7 @@ public struct ChaosEngine {
     ///   - fault: The type of fault to inject.
     ///   - duration: How long the fault should persist.
     ///   - identifier: Unique identifier for the fault (auto-generated if nil).
+    @MainActor
     public static func injectFault(_ fault: FaultType, duration: TimeInterval, identifier: String? = nil) async throws {
         let faultId = identifier ?? UUID().uuidString
 
@@ -72,6 +75,7 @@ public struct ChaosEngine {
     }
 
     /// Check if a specific fault is currently active.
+    @MainActor
     public static func isFaultActive(_ identifier: String) -> Bool {
         faultQueue.sync {
             activeFaults[identifier] != nil
@@ -79,6 +83,7 @@ public struct ChaosEngine {
     }
 
     /// Get all currently active faults.
+    @MainActor
     public static func getActiveFaults() -> [String: FaultType] {
         faultQueue.sync {
             activeFaults
@@ -86,6 +91,7 @@ public struct ChaosEngine {
     }
 
     /// Clear all active faults.
+    @MainActor
     public static func clearAllFaults() {
         faultQueue.async {
             activeFaults.removeAll()
@@ -153,7 +159,7 @@ public struct ChaosEngine {
         }
 
         // Wait for test completion
-        let (ops, fails) = await chaosTask.result.get()
+        let (ops, fails) = try await chaosTask.result.get()
         operationsPerformed = ops
         failuresEncountered = fails
 
@@ -219,6 +225,7 @@ public struct ChaosEngine {
         }
     }
 
+    @MainActor
     private static func simulateOperationUnderChaos() async throws {
         // Simulate a typical operation that could be affected by chaos
         let activeFaults = getActiveFaults()
