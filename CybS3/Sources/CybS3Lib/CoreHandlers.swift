@@ -1,7 +1,7 @@
 import Foundation
 
 /// Type alias for configuration
-typealias Configuration = EncryptedConfig
+public typealias Configuration = EncryptedConfig
 
 /// Configuration-related errors
 enum ConfigurationError: LocalizedError {
@@ -19,7 +19,7 @@ enum ConfigurationError: LocalizedError {
 }
 
 /// Protocol for command handlers that encapsulate business logic
-protocol CommandHandler {
+public protocol CommandHandler {
     associatedtype Input
     associatedtype Output
 
@@ -27,50 +27,50 @@ protocol CommandHandler {
 }
 
 /// Input/output types for core commands
-struct LoginInput {
-    let mnemonic: String
+public struct LoginInput {
+    public let mnemonic: String
 }
 
-struct LoginOutput {
-    let success: Bool
-    let message: String
+public struct LoginOutput {
+    public let success: Bool
+    public let message: String
 }
 
-struct LogoutInput {
+public struct LogoutInput {
     // No input needed
 }
 
-struct LogoutOutput {
-    let success: Bool
-    let message: String
+public struct LogoutOutput {
+    public let success: Bool
+    public let message: String
 }
 
-struct ConfigInput {
-    let mnemonic: String
-    let list: Bool
-    let reset: Bool
-    let accessKey: String?
-    let secretKey: String?
-    let endpoint: String?
-    let region: String?
-    let bucket: String?
-    let createVault: String?
-    let activeVault: String?
+public struct ConfigInput {
+    public let mnemonic: String
+    public let list: Bool
+    public let reset: Bool
+    public let accessKey: String?
+    public let secretKey: String?
+    public let endpoint: String?
+    public let region: String?
+    public let bucket: String?
+    public let createVault: String?
+    public let activeVault: String?
 }
 
-struct ConfigOutput {
-    let success: Bool
-    let message: String
-    let config: Configuration? // Only populated when listing
+public struct ConfigOutput {
+    public let success: Bool
+    public let message: String
+    public let config: Configuration? // Only populated when listing
 }
 
 /// Service protocols for dependency injection
-protocol AuthenticationServiceProtocol {
+public protocol AuthenticationServiceProtocol {
     func login(mnemonic: String) async throws -> LoginOutput
     func logout() async throws -> LogoutOutput
 }
 
-protocol ConfigurationServiceProtocol {
+public protocol ConfigurationServiceProtocol {
     func getConfig(mnemonic: String) async throws -> Configuration
     func updateConfig(mnemonic: String, updates: ConfigInput) async throws -> ConfigOutput
     func resetConfig() async throws

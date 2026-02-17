@@ -48,34 +48,28 @@ struct CybKMSServer: AsyncParsableCommand {
         // Create KMS controller
         let kmsController = KMSController(operations: operations)
 
-        // Setup Hummingbird application
-        let app = Application(
-            router: Router(),
-            configuration: .init(
-                address: .hostname(host, port: port),
-                serverName: "CybKMS"
-            )
-        )
+        // Create Router
+        let router = Router()
 
         // Add middleware
-        app.middlewares.add(LogRequestsMiddleware(.info))
-        app.middlewares.add(CORSMiddleware())
+        router.middlewares.add(LogRequestsMiddleware(.info))
+        router.middlewares.add(CORSMiddleware<BasicRequestContext>())
 
         // Register routes
-        app.router.registerKMSRoutes(controller: kmsController)
+        router.registerKMSRoutes(controller: kmsController)
 
         // Health check endpoint
-        app.router.get("/health") { _, _ in
+        router.get("/health") { _, _ in
             return ["status": "healthy", "service": "CybKMS", "version": "1.0.0"]
         }
 
         // Root endpoint
-        app.router.get("/") { _, _ in
-            return [
-                "service": "CybKMS",
-                "version": "1.0.0",
-                "description": "AWS KMS API-compatible key management service",
-                "endpoints": [
+        router.get("/") { _, _ in
+            return RootResponse(
+                service: "CybKMS",
+                version: "1.0.0",
+                description: "AWS KMS API-compatible key management service",
+                endpoints: [
                     "POST /CreateKey",
                     "POST /DescribeKey",
                     "POST /ListKeys",
@@ -86,8 +80,18 @@ struct CybKMSServer: AsyncParsableCommand {
                     "POST /ScheduleKeyDeletion",
                     "GET /health"
                 ]
-            ]
+            )
         }
+        }
+
+        // Setup Hummingbird application
+        let app = Application(
+            router: router,
+            configuration: .init(
+                address: .hostname(host, port: port),
+                serverName: "CybKMS"
+            )
+        )
 
         logger.info("CybKMS server started successfully", metadata: [
             "url": "http://\(host):\(port)"
@@ -98,11 +102,23 @@ struct CybKMSServer: AsyncParsableCommand {
     }
 }
 
+struct RootResponse: ResponseGenerator, Encodable {
+    let service: String
+    let version: String
+    let description: String
+    let endpoints: [String]
+    
+    public func response(from request: Request, context: some RequestContext) throws -> Response {
+        let jsonData = try JSONEncoder().encode(self)
+        return Response(status: .ok, headers: [.contentType: "application/json"], body: .init(byteBuffer: ByteBuffer(bytes: jsonData)))
+    }
+}
+
 // MARK: - Middleware
 
 /// CORS middleware for API access
-struct CORSMiddleware: RouterMiddleware {
-    func handle(_ input: Request, context: some RequestContext, next: (Request, some RequestContext) async throws -> Response) async throws -> Response {
+struct CORSMiddleware<Context: RequestContext>: RouterMiddleware {
+    func handle(_ input: Request, context: Context, next: (Request, Context) async throws -> Response) async throws -> Response {
         var response = try await next(input, context)
 
         // Add CORS headers

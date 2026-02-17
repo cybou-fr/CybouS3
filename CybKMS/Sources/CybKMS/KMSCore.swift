@@ -210,7 +210,7 @@ actor KMSKeyStore {
             try await saveKeys(to: path)
         }
 
-        logger.info("Created new KMS key", metadata: ["keyId": keyId])
+        logger.info("Created new KMS key", metadata: ["keyId": .string(keyId)])
         return keyEntry.metadata
     }
 
@@ -247,7 +247,7 @@ actor KMSKeyStore {
             try await saveKeys(to: path)
         }
 
-        logger.info("Updated key state", metadata: ["keyId": keyId, "state": state.rawValue])
+        logger.info("Updated key state", metadata: ["keyId": .string(keyId), "state": .string(state.rawValue)])
     }
 
     func deleteKey(_ keyId: String) async throws {
@@ -261,7 +261,7 @@ actor KMSKeyStore {
             try await saveKeys(to: path)
         }
 
-        logger.info("Deleted KMS key", metadata: ["keyId": keyId])
+        logger.info("Deleted KMS key", metadata: ["keyId": .string(keyId)])
     }
 
     private func generateKeyId() -> String {
@@ -282,7 +282,7 @@ actor KMSKeyStore {
         let decoder = JSONDecoder()
         let keyStore = try decoder.decode([String: KMSKeyEntry].self, from: data)
         keys = keyStore
-        logger.info("Loaded keys from persistence", metadata: ["count": "\(keys.count)"])
+        logger.info("Loaded keys from persistence", metadata: ["count": .string("\(keys.count)")])
     }
 
     private func saveKeys(to path: String) async throws {
@@ -290,7 +290,7 @@ actor KMSKeyStore {
         let encoder = JSONEncoder()
         let data = try encoder.encode(keys)
         try data.write(to: url)
-        logger.debug("Saved keys to persistence", metadata: ["count": "\(keys.count)"])
+        logger.debug("Saved keys to persistence", metadata: ["count": .string("\(keys.count)")])
     }
 }
 
@@ -315,7 +315,7 @@ actor KMSOperations {
 
     func encrypt(plaintext: Data, keyId: String, encryptionAlgorithm: KMSEncryptionAlgorithm = .symmetricDefault,
                  encryptionContext: [String: String]? = nil) async throws -> KMSEncryptResult {
-        let keyEntry = try keyStore.getKey(keyId)
+        let keyEntry = try await keyStore.getKey(keyId)
 
         guard keyEntry.metadata.enabled && keyEntry.metadata.keyState == .enabled else {
             throw KMSError.keyUnavailableException("Key '\(keyId)' is not enabled")
@@ -331,7 +331,7 @@ actor KMSOperations {
         // Create ciphertext blob: nonce + encrypted data + tag
         let ciphertextBlob = sealedBox.combined!
 
-        logger.debug("Encrypted data", metadata: ["keyId": keyId, "size": "\(plaintext.count)"])
+        logger.debug("Encrypted data", metadata: ["keyId": .string(keyId), "size": .string("\(plaintext.count)")])
 
         return KMSEncryptResult(
             ciphertextBlob: ciphertextBlob,
@@ -345,7 +345,7 @@ actor KMSOperations {
                  encryptionContext: [String: String]? = nil, keyId: String? = nil) async throws -> KMSDecryptResult {
         // If keyId is provided, use it directly
         if let specifiedKeyId = keyId {
-            let keyEntry = try keyStore.getKey(specifiedKeyId)
+            let keyEntry = try await keyStore.getKey(specifiedKeyId)
 
             guard keyEntry.metadata.enabled && keyEntry.metadata.keyState == .enabled else {
                 throw KMSError.keyUnavailableException("Key '\(specifiedKeyId)' is not enabled")
@@ -355,7 +355,7 @@ actor KMSOperations {
             let sealedBox = try AES.GCM.SealedBox(combined: ciphertextBlob)
             let plaintext = try AES.GCM.open(sealedBox, using: symmetricKey)
 
-            logger.debug("Decrypted data", metadata: ["keyId": specifiedKeyId, "size": "\(plaintext.count)"])
+            logger.debug("Decrypted data", metadata: ["keyId": .string(specifiedKeyId), "size": .string("\(plaintext.count)")])
 
             return KMSDecryptResult(
                 plaintext: plaintext,
@@ -368,12 +368,21 @@ actor KMSOperations {
         // Otherwise, try all keys (this is not efficient for production)
         var lastError: Error?
 
-        for (_, keyEntry) in await keyStore.listKeys().map({ ($0.keyId, try! keyStore.getKey($0.keyId)) }) {
-            if let specifiedKeyId = keyId, specifiedKeyId != keyEntry.metadata.keyId {
+        let allKeys = await keyStore.listKeys()
+        
+        for keyMeta in allKeys {
+            if let specifiedKeyId = keyId, specifiedKeyId != keyMeta.keyId {
                 continue
             }
 
-            guard keyEntry.metadata.enabled && keyEntry.metadata.keyState == .enabled else {
+            guard keyMeta.enabled && keyMeta.keyState == .enabled else {
+                continue
+            }
+
+            let keyEntry: KMSKeyEntry
+            do {
+                keyEntry = try await keyStore.getKey(keyMeta.keyId)
+            } catch {
                 continue
             }
 
@@ -382,7 +391,7 @@ actor KMSOperations {
                 let sealedBox = try AES.GCM.SealedBox(combined: ciphertextBlob)
                 let plaintext = try AES.GCM.open(sealedBox, using: symmetricKey)
 
-                logger.debug("Decrypted data", metadata: ["keyId": keyEntry.metadata.keyId, "size": "\(plaintext.count)"])
+                logger.debug("Decrypted data", metadata: ["keyId": .string(keyEntry.metadata.keyId), "size": .string("\(plaintext.count)")])
 
                 return KMSDecryptResult(
                     plaintext: plaintext,
@@ -396,16 +405,19 @@ actor KMSOperations {
             }
         }
 
+        if let error = lastError {
+            throw error
+        }
         throw KMSError.invalidCiphertextException("Unable to decrypt ciphertext with available keys")
     }
 
     func describeKey(keyId: String) async throws -> KMSKeyMetadata {
-        let keyEntry = try keyStore.getKey(keyId)
+        let keyEntry = try await keyStore.getKey(keyId)
         return keyEntry.metadata
     }
 
     func listKeys() async throws -> [KMSKeyMetadata] {
-        return keyStore.listKeys()
+        return await keyStore.listKeys()
     }
 
     func createKey(description: String? = nil, keyUsage: KMSKeyUsage = .encryptDecrypt) async throws -> KMSKeyMetadata {

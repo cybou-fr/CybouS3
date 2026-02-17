@@ -1,78 +1,78 @@
 import Foundation
-import CybS3Lib
+import Foundation
 import NIOCore
 import Crypto
 
 /// Input/output types for file operations
-struct ListFilesInput {
-    let bucketName: String
-    let prefix: String?
-    let delimiter: String?
-    let vaultName: String?
+public struct ListFilesInput {
+    public let bucketName: String
+    public let prefix: String?
+    public let delimiter: String?
+    public let vaultName: String?
 }
 
-struct ListFilesOutput {
-    let objects: [S3Object]
-    let success: Bool
-    let message: String
+public struct ListFilesOutput {
+    public let objects: [S3Object]
+    public let success: Bool
+    public let message: String
 }
 
-struct GetFileInput {
-    let bucketName: String
-    let key: String
-    let localPath: String?
-    let vaultName: String?
-    let progressCallback: ((Int) -> Void)?
+public struct GetFileInput {
+    public let bucketName: String
+    public let key: String
+    public let localPath: String?
+    public let vaultName: String?
+    public let progressCallback: ((Int) -> Void)?
 }
 
-struct GetFileOutput {
-    let success: Bool
-    let message: String
-    let bytesDownloaded: Int
-    let fileSize: Int64?
+public struct GetFileOutput {
+    public let success: Bool
+    public let message: String
+    public let bytesDownloaded: Int
+    public let fileSize: Int64?
 }
 
-struct PutFileInput {
-    let bucketName: String
-    let localPath: String
-    let remoteKey: String
-    let dryRun: Bool
-    let vaultName: String?
+public struct PutFileInput {
+    public let bucketName: String
+    public let localPath: String
+    public let remoteKey: String
+    public let dryRun: Bool
+    public let vaultName: String?
 }
 
-struct PutFileOutput {
-    let success: Bool
-    let message: String
-    let bytesUploaded: Int64?
-    let encryptedSize: Int64?
+public struct PutFileOutput {
+    public let success: Bool
+    public let message: String
+    public let bytesUploaded: Int64?
+    public let encryptedSize: Int64?
 }
 
-struct DeleteFileInput {
-    let bucketName: String
-    let key: String
-    let force: Bool
-    let vaultName: String?
+public struct DeleteFileInput {
+    public let bucketName: String
+    public let key: String
+    public let force: Bool
+    public let vaultName: String?
 }
 
-struct DeleteFileOutput {
-    let success: Bool
-    let message: String
+public struct DeleteFileOutput {
+    public let success: Bool
+    public let message: String
 }
 
-struct CopyFileInput {
-    let bucketName: String
-    let sourceKey: String
-    let destKey: String
-    let vaultName: String?
+public struct CopyFileInput {
+    public let bucketName: String
+    public let sourceKey: String
+    public let destKey: String
+    public let vaultName: String?
 }
 
-struct CopyFileOutput {
-    let success: Bool
-    let message: String
+public struct CopyFileOutput {
+    public let success: Bool
+    public let message: String
 }
 
 /// Service protocols for file operations
-protocol FileOperationsServiceProtocol {
+public protocol FileOperationsServiceProtocol {
     func listFiles(input: ListFilesInput) async throws -> ListFilesOutput
     func getFile(input: GetFileInput) async throws -> GetFileOutput
     func putFile(input: PutFileInput) async throws -> PutFileOutput

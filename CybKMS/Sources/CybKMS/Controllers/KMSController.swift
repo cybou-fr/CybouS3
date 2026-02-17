@@ -164,3 +164,40 @@ extension RouterMethods {
         post("/ScheduleKeyDeletion", use: controller.scheduleKeyDeletion)
     }
 }
+
+// MARK: - ResponseGenerator Conformance
+
+extension KMSKeyMetadata: ResponseGenerator {
+    public func response(from request: Request, context: some RequestContext) throws -> Response {
+        let jsonData = try JSONEncoder().encode(self)
+        return Response(status: .ok, headers: [.contentType: "application/json"], body: .init(byteBuffer: ByteBuffer(bytes: jsonData)))
+    }
+}
+
+extension ListKeysOutput: ResponseGenerator {
+    public func response(from request: Request, context: some RequestContext) throws -> Response {
+        let jsonData = try JSONEncoder().encode(self)
+        return Response(status: .ok, headers: [.contentType: "application/json"], body: .init(byteBuffer: ByteBuffer(bytes: jsonData)))
+    }
+}
+
+extension KMSEncryptResult: ResponseGenerator {
+    public func response(from request: Request, context: some RequestContext) throws -> Response {
+        let jsonData = try JSONEncoder().encode(self)
+        return Response(status: .ok, headers: [.contentType: "application/json"], body: .init(byteBuffer: ByteBuffer(bytes: jsonData)))
+    }
+}
+
+extension KMSDecryptResult: ResponseGenerator {
+    public func response(from request: Request, context: some RequestContext) throws -> Response {
+        let jsonData = try JSONEncoder().encode(self)
+        return Response(status: .ok, headers: [.contentType: "application/json"], body: .init(byteBuffer: ByteBuffer(bytes: jsonData)))
+    }
+}
+
+extension ScheduleKeyDeletionOutput: ResponseGenerator {
+    public func response(from request: Request, context: some RequestContext) throws -> Response {
+        let jsonData = try JSONEncoder().encode(self)
+        return Response(status: .ok, headers: [.contentType: "application/json"], body: .init(byteBuffer: ByteBuffer(bytes: jsonData)))
+    }
+}

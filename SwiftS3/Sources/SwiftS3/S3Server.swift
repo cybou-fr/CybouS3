@@ -1,5 +1,6 @@
 import ArgumentParser
 import CybS3Lib
+import CybKMSClient
 import Foundation
 import Hummingbird
 import Logging
@@ -44,10 +45,9 @@ struct S3Server {
             atPath: storagePath, withIntermediateDirectories: true)
 
         // Create KMS provider if endpoint is provided
-        var kmsProvider: KMSProvider? = nil
+        var kmsProvider: CybKMSClient? = nil
         if let endpoint = cybKMSEndpoint {
-            let client = try CybKMSClient(endpoint: endpoint)
-            kmsProvider = CybKMSProvider(client: client)
+            kmsProvider = try CybKMSClient(endpoint: endpoint)
         }
 
         let storage = try await FileSystemStorage(rootPath: storagePath, metadataStore: metadataStore, kmsProvider: kmsProvider)

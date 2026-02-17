@@ -4,7 +4,7 @@ import Foundation
 import NIOCore
 
 /// Protocol for server process management service
-protocol ServerProcessServiceProtocol {
+public protocol ServerProcessServiceProtocol {
     func startServer(config: ServerStartConfig) async throws -> ServerStartResult
     func stopServer(port: Int) async throws -> ServerStopResult
     func getServerStatus(port: Int) async throws -> ServerStatusResult
@@ -12,41 +12,41 @@ protocol ServerProcessServiceProtocol {
 }
 
 /// Server configuration for starting
-struct ServerStartConfig {
-    let swifts3Path: String
-    let port: Int
-    let hostname: String
-    let storage: String
-    let accessKey: String
-    let secretKey: String
-    let background: Bool
+public struct ServerStartConfig {
+    public let swifts3Path: String
+    public let port: Int
+    public let hostname: String
+    public let storage: String
+    public let accessKey: String
+    public let secretKey: String
+    public let background: Bool
 }
 
 /// Results for server operations
-struct ServerStartResult {
-    let port: Int
-    let hostname: String
-    let pid: Int?
-    let background: Bool
+public struct ServerStartResult {
+    public let port: Int
+    public let hostname: String
+    public let pid: Int?
+    public let background: Bool
 }
 
-struct ServerStopResult {
-    let port: Int
-    let pid: Int?
+public struct ServerStopResult {
+    public let port: Int
+    public let pid: Int?
 }
 
-struct ServerStatusResult {
-    let port: Int
-    let running: Bool
-    let pid: Int?
-    let httpStatus: Int?
+public struct ServerStatusResult {
+    public let port: Int
+    public let running: Bool
+    public let pid: Int?
+    public let httpStatus: Int?
 }
 
-struct ServerLogsResult {
-    let port: Int
-    let pid: Int?
-    let logs: String?
-    let follow: Bool
+public struct ServerLogsResult {
+    public let port: Int
+    public let pid: Int?
+    public let logs: String?
+    public let follow: Bool
 }
 
 /// Default implementation of server process service

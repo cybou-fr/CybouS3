@@ -1,6 +1,7 @@
 import AsyncHTTPClient
 import Crypto
 import CybS3Lib
+import CybKMSClient
 import Foundation
 import Hummingbird
 import Logging
@@ -92,10 +93,10 @@ actor FileSystemStorage: StorageBackend {
     let logger = Logger(label: "SwiftS3.FileSystemStorage")
     let httpClient: HTTPClient?
     let testMode: Bool
-    let kmsProvider: KMSProvider?
+    let kmsProvider: CybKMSClient?
 
     /// Initializes a new file system storage instance.
-    init(rootPath: String, metadataStore: MetadataStore? = nil, testMode: Bool = false, kmsProvider: KMSProvider? = nil) async throws {
+    init(rootPath: String, metadataStore: MetadataStore? = nil, testMode: Bool = false, kmsProvider: CybKMSClient? = nil) async throws {
         self.rootPath = FilePath(rootPath)
         self.metadataStore = metadataStore ?? FileSystemMetadataStore(rootPath: rootPath)
         self.testMode = testMode
@@ -1226,10 +1227,10 @@ actor FileSystemStorage: StorageBackend {
                 context = ["encryption-context": contextStr]
             }
 
-            let result = try await kmsProvider.encrypt(data: data, keyId: keyId, context: context)
+            let result = try await kmsProvider.encrypt(plaintext: data, keyId: keyId, encryptionContext: context)
 
             // Return ciphertext with KMS metadata
-            return (encryptedData: result.ciphertext, key: nil, iv: nil)
+            return (encryptedData: result.ciphertextBlob, key: nil, iv: nil)
         }
     }
 
@@ -1260,9 +1261,9 @@ actor FileSystemStorage: StorageBackend {
                 context = ["encryption-context": contextStr]
             }
 
-            let result = try await kmsProvider.decrypt(data: encryptedData, context: context)
+            let result = try await kmsProvider.decrypt(ciphertextBlob: encryptedData, encryptionContext: context)
 
-            return result
+            return result.plaintext
         }
     }
 

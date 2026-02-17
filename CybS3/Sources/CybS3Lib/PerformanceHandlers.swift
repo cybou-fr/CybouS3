@@ -2,7 +2,7 @@ import CybS3Lib
 import Foundation
 
 /// Protocol for performance testing service
-protocol PerformanceTestingServiceProtocol {
+public protocol PerformanceTestingServiceProtocol {
     func runBenchmark(config: BenchmarkConfig) async throws -> BenchmarkResult
     func checkRegression() async throws -> RegressionResult
     func updateBaseline() async throws -> BaselineUpdateResult
@@ -10,38 +10,38 @@ protocol PerformanceTestingServiceProtocol {
 }
 
 /// Benchmark configuration
-struct BenchmarkConfig {
-    let duration: Int
-    let concurrency: Int
-    let fileSize: Int
-    let swiftS3Mode: Bool
-    let endpoint: String
-    let bucket: String
+public struct BenchmarkConfig {
+    public let duration: Int
+    public let concurrency: Int
+    public let fileSize: Int
+    public let swiftS3Mode: Bool
+    public let endpoint: String
+    public let bucket: String
 }
 
 /// Results from benchmark operations
-struct BenchmarkResult {
-    let config: BenchmarkConfig
-    let success: Bool
-    let metrics: [String: Double]?
-    let errorMessage: String?
+public struct BenchmarkResult {
+    public let config: BenchmarkConfig
+    public let success: Bool
+    public let metrics: [String: Double]?
+    public let errorMessage: String?
 }
 
-struct RegressionResult {
-    let hasRegression: Bool
-    let details: String
-    let baselineMetrics: [String: Double]?
-    let currentMetrics: [String: Double]?
+public struct RegressionResult {
+    public let hasRegression: Bool
+    public let details: String
+    public let baselineMetrics: [String: Double]?
+    public let currentMetrics: [String: Double]?
 }
 
-struct BaselineUpdateResult {
-    let success: Bool
-    let message: String
+public struct BaselineUpdateResult {
+    public let success: Bool
+    public let message: String
 }
 
-struct PerformanceReport {
-    let reportData: String
-    let format: String
+public struct PerformanceReport {
+    public let reportData: String
+    public let format: String
 }
 
 /// Default implementation of performance testing service

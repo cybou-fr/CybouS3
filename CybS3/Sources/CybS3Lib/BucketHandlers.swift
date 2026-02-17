@@ -1,4 +1,3 @@
-import CybS3Lib
 import Foundation
 
 /// Protocol for bucket operations service
@@ -16,15 +15,15 @@ public class DefaultBucketOperationsService: BucketOperationsServiceProtocol {
         self.client = client
     }
 
-    func createBucket(name: String) async throws {
+    public func createBucket(name: String) async throws {
         try await client.createBucket(name: name)
     }
 
-    func deleteBucket(name: String) async throws {
+    public func deleteBucket(name: String) async throws {
         try await client.deleteBucket(name: name)
     }
 
-    func listBuckets() async throws -> [String] {
+    public func listBuckets() async throws -> [String] {
         try await client.listBuckets()
     }
 }
