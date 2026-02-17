@@ -235,35 +235,17 @@ struct PerformanceCommands: AsyncParsableCommand {
             func run() async throws {
                 print("📝 Updating performance baselines...")
 
-                // Generate sample baseline results
-                // In production, this would run actual benchmarks
-                let baselineResults = [
-                    RegressionDetector.BenchmarkResult(
-                        operation: "single_upload_1MB",
-                        duration: 0.8,
-                        throughput: 1024.0 / 0.8,
-                        success: true
-                    ),
-                    RegressionDetector.BenchmarkResult(
-                        operation: "concurrent_uploads_10x512KB",
-                        duration: 2.0,
-                        throughput: (10 * 512) / 2.0,
-                        success: true
-                    )
-                ]
+                let service = DefaultPerformanceTestingService()
+                let handler = UpdateBaselineHandler(service: service)
 
-                if let outputPath = outputFile {
-                    // Save to file
-                    let encoder = JSONEncoder()
-                    encoder.dateEncodingStrategy = .iso8601
-                    encoder.outputFormatting = .prettyPrinted
-                    let data = try encoder.encode(baselineResults)
-                    try data.write(to: URL(fileURLWithPath: outputPath))
-                    print("💾 Baselines saved to \(outputPath)")
+                let input = UpdateBaselineInput()
+                let output = try await handler.handle(input: input)
+
+                if output.result.success {
+                    print("✅ \(output.result.message)")
                 } else {
-                    // Save to secure storage
-                    try RegressionDetector.updateBaselines(baselineResults)
-                    print("🔐 Baselines updated in secure storage")
+                    print("❌ Failed to update baseline: \(output.result.message)")
+                    throw ExitCode.failure
                 }
             }
         }
@@ -280,24 +262,14 @@ struct PerformanceCommands: AsyncParsableCommand {
             func run() async throws {
                 print("📋 Generating regression report...")
 
-                do {
-                    let baselines = try RegressionDetector.loadBaselines()
+                let service = DefaultPerformanceTestingService()
+                let handler = GenerateReportHandler(service: service)
 
-                    if baselines.isEmpty {
-                        print("⚠️ No baseline results found")
-                        print("💡 Run 'cybs3 performance regression update' to establish baselines")
-                        return
-                    }
+                let input = GenerateReportInput()
+                let output = try await handler.handle(input: input)
 
-                    print("📊 Current Baselines:")
-                    for baseline in baselines.sorted(by: { $0.operation < $1.operation }) {
-                        print("  • \(baseline.operation): \(String(format: "%.3f", baseline.duration))s (\(String(format: "%.1f", baseline.throughput))/s)")
-                    }
-
-                } catch {
-                    print("❌ Failed to load baselines: \(error)")
-                    throw error
-                }
+                print("📊 Performance Report:")
+                print(output.result.reportData)
             }
         }
     }

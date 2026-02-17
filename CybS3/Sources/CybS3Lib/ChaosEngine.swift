@@ -1,5 +1,5 @@
 import Foundation
-import Network
+// import Network  // Temporarily commented out for Linux compatibility
 
 /// Chaos engineering framework for testing system resilience under failure conditions.
 public struct ChaosEngine {
