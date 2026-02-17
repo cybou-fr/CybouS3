@@ -49,41 +49,28 @@ struct ServerCommands: AsyncParsableCommand {
             print("   Storage: \(storage)")
             print("   Access Key: \(accessKey)")
 
-            let process = Process()
-            process.executableURL = URL(fileURLWithPath: swifts3Path)
-            process.arguments = [
-                "server",
-                "--hostname", hostname,
-                "--port", "\(port)",
-                "--storage", storage,
-                "--access-key", accessKey,
-                "--secret-key", secretKey
-            ]
+            let httpClient = HTTPClient()
+            let service = DefaultServerProcessService(httpClient: httpClient)
+            let handler = StartServerHandler(service: service)
 
-            if background {
-                // Save PID for later stop command
-                let pidFile = "/tmp/swifts3-\(port).pid"
-                process.terminationHandler = { _ in
-                    try? FileManager.default.removeItem(atPath: pidFile)
-                }
+            let config = ServerStartConfig(
+                swifts3Path: swifts3Path,
+                port: port,
+                hostname: hostname,
+                storage: storage,
+                accessKey: accessKey,
+                secretKey: secretKey,
+                background: background
+            )
 
-                try process.run()
-                try "\(process.processIdentifier)".write(toFile: pidFile, atomically: true, encoding: .utf8)
-                print("✅ Server started in background (PID: \(process.processIdentifier))")
-                print("💡 Use 'cybs3 server stop --port \(port)' to stop")
+            let input = StartServerInput(config: config)
+            let output = try await handler.handle(input: input)
+
+            if output.result.background {
+                print("✅ Server started in background (PID: \(output.result.pid ?? 0))")
+                print("💡 Use 'cybs3 server stop --port \(output.result.port)' to stop")
             } else {
-                let outputPipe = Pipe()
-                process.standardOutput = outputPipe
-                process.standardError = outputPipe
-
-                try process.run()
-                process.waitUntilExit()
-
-                if process.terminationStatus == 0 {
-                    print("✅ Server stopped gracefully")
-                } else {
-                    print("❌ Server exited with code \(process.terminationStatus)")
-                }
+                print("✅ Server stopped gracefully")
             }
         }
     }
@@ -98,23 +85,14 @@ struct ServerCommands: AsyncParsableCommand {
         var port: Int = 8080
 
         func run() async throws {
-            let pidFile = "/tmp/swifts3-\(port).pid"
-            guard let pidString = try? String(contentsOfFile: pidFile),
-                  let pid = Int(pidString) else {
-                print("❌ No server found running on port \(port)")
-                return
-            }
+            let httpClient = HTTPClient()
+            let service = DefaultServerProcessService(httpClient: httpClient)
+            let handler = StopServerHandler(service: service)
 
-            print("🛑 Stopping SwiftS3 server on port \(port) (PID: \(pid))")
+            let input = StopServerInput(port: port)
+            let output = try await handler.handle(input: input)
 
-            let process = Process()
-            process.executableURL = URL(fileURLWithPath: "/bin/kill")
-            process.arguments = ["\(pid)"]
-
-            try process.run()
-            process.waitUntilExit()
-
-            try? FileManager.default.removeItem(atPath: pidFile)
+            print("🛑 Stopping SwiftS3 server on port \(output.result.port) (PID: \(output.result.pid ?? 0))")
             print("✅ Server stopped")
         }
     }
@@ -129,24 +107,22 @@ struct ServerCommands: AsyncParsableCommand {
         var port: Int = 8080
 
         func run() async throws {
-            let pidFile = "/tmp/swifts3-\(port).pid"
-            if let pidString = try? String(contentsOfFile: pidFile),
-               let pid = Int(pidString) {
-                print("✅ SwiftS3 server running on port \(port) (PID: \(pid))")
+            let httpClient = HTTPClient()
+            let service = DefaultServerProcessService(httpClient: httpClient)
+            let handler = GetServerStatusHandler(service: service)
 
-                // Try to connect and get basic info
-                do {
-                    let client = HTTPClient()
-                    defer { try? client.shutdown() }
+            let input = GetServerStatusInput(port: port)
+            let output = try await handler.handle(input: input)
 
-                    let request = HTTPClientRequest(url: "http://127.0.0.1:\(port)/")
-                    let response = try await client.execute(request, deadline: .now() + .seconds(5))
-                    print("   Status: \(response.status.code)")
-                } catch {
+            if output.result.running {
+                print("✅ SwiftS3 server running on port \(output.result.port) (PID: \(output.result.pid ?? 0))")
+                if let httpStatus = output.result.httpStatus {
+                    print("   Status: \(httpStatus)")
+                } else {
                     print("   Status: Unable to connect")
                 }
             } else {
-                print("❌ No SwiftS3 server running on port \(port)")
+                print("❌ No SwiftS3 server running on port \(output.result.port)")
             }
         }
     }
@@ -169,17 +145,15 @@ struct ServerCommands: AsyncParsableCommand {
         func run() async throws {
             print("📋 Fetching SwiftS3 server logs...")
 
-            // Check if server is running
-            let pidFile = "/tmp/swifts3-\(port).pid"
-            guard let pidString = try? String(contentsOfFile: pidFile),
-                  let pid = Int(pidString) else {
-                print("❌ No SwiftS3 server running on port \(port)")
-                print("💡 Start the server first with: cybs3 server start --port \(port)")
-                throw ExitCode.failure
-            }
+            let httpClient = HTTPClient()
+            let service = DefaultServerProcessService(httpClient: httpClient)
+            let handler = GetServerLogsHandler(service: service)
 
-            if follow {
-                print("👀 Following logs for server on port \(port) (PID: \(pid))")
+            let input = GetServerLogsInput(port: port, lines: lines, follow: follow)
+            let output = try await handler.handle(input: input)
+
+            if output.result.follow {
+                print("👀 Following logs for server on port \(output.result.port) (PID: \(output.result.pid ?? 0))")
                 print("   Press Ctrl+C to stop following")
 
                 let process = Process()
@@ -194,28 +168,14 @@ struct ServerCommands: AsyncParsableCommand {
                     print("   Check server startup logs for log file location.")
                 }
             } else {
-                print("📄 Last \(lines) lines of logs for server on port \(port):")
+                print("📄 Last \(lines) lines of logs for server on port \(output.result.port):")
                 print(String(repeating: "─", count: 60))
 
-                let process = Process()
-                process.executableURL = URL(fileURLWithPath: "/usr/bin/tail")
-                process.arguments = ["-n", "\(lines)", "/tmp/swifts3-\(port).log"]
-
-                let outputPipe = Pipe()
-                process.standardOutput = outputPipe
-
-                do {
-                    try process.run()
-                    process.waitUntilExit()
-
-                    let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
-                    if let output = String(data: outputData, encoding: .utf8), !output.isEmpty {
-                        print(output)
-                    } else {
-                        print("⚠️  No logs found or log file is empty")
-                    }
-                } catch {
-                    print("⚠️  Log file not found. Server may not be configured to write logs.")
+                if let logs = output.result.logs, !logs.isEmpty {
+                    print(logs)
+                } else {
+                    print("⚠️  No logs found or log file is empty")
+                    print("   Server may not be configured to write logs.")
                     print("   Check server startup logs for log file location.")
                 }
             }

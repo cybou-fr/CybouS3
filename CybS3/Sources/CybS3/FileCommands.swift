@@ -42,18 +42,23 @@ struct FileCommands: AsyncParsableCommand {
             } else {
                 bucketName = try InteractionService.promptForBucket()
             }
-            let (client, _, _, vaultName, _) = try GlobalOptions.createClient(
-                options, overrideBucket: bucketName)
-            defer { Task { try? await client.shutdown() } }
+
+            let input = ListFilesInput(
+                bucketName: bucketName,
+                prefix: prefix,
+                delimiter: delimiter,
+                vaultName: options.vault
+            )
+
+            let handler = ListFilesHandler(fileService: FileServices.shared.fileOperationsService)
+            let result = try await handler.handle(input: input)
 
             if !json {
-                print("Using vault: \(vaultName ?? "default") and bucket: \(bucketName)")
+                print("Using vault: \(options.vault ?? "default") and bucket: \(bucketName)")
                 if let prefix = prefix {
                     print("Filtering by prefix: \(prefix)")
                 }
             }
-
-            let objects = try await client.listObjects(prefix: prefix, delimiter: delimiter)
 
             if json {
                 let encoder = JSONEncoder()
@@ -72,19 +77,19 @@ struct FileCommands: AsyncParsableCommand {
                     let count: Int
                 }
 
-                let fileInfos = objects.map { obj in
+                let fileInfos = result.objects.map { obj in
                     FileInfo(key: obj.key, size: obj.size, lastModified: obj.lastModified, isDirectory: obj.isDirectory)
                 }
-                let output = FilesOutput(objects: fileInfos, count: objects.count)
+                let output = FilesOutput(objects: fileInfos, count: result.objects.count)
                 let data = try encoder.encode(output)
                 print(String(data: data, encoding: .utf8) ?? "{}")
             } else {
-                if objects.isEmpty {
+                if result.objects.isEmpty {
                     print("No objects found.")
                 } else {
-                    print("\nFound \(objects.count) object(s):")
+                    print("\nFound \(result.objects.count) object(s):")
                     print(String(repeating: "-", count: 60))
-                    for object in objects {
+                    for object in result.objects {
                         print(object)
                     }
                 }
@@ -113,13 +118,23 @@ struct FileCommands: AsyncParsableCommand {
             } else {
                 bucketName = try InteractionService.promptForBucket()
             }
-            let (client, _, _, vaultName, _) = try GlobalOptions.createClient(
-                options, overrideBucket: bucketName)
-            defer { Task { try? await client.shutdown() } }
-            print("Using vault: \(vaultName ?? "default") and bucket: \(bucketName)")
 
-            try await client.copyObject(sourceKey: sourceKey, destKey: destKey)
-            print("✅ Copied '\(sourceKey)' to '\(destKey)'")
+            let input = CopyFileInput(
+                bucketName: bucketName,
+                sourceKey: sourceKey,
+                destKey: destKey,
+                vaultName: options.vault
+            )
+
+            let handler = CopyFileHandler(fileService: FileServices.shared.fileOperationsService)
+            let result = try await handler.handle(input: input)
+
+            if result.success {
+                ConsoleUI.success(result.message)
+            } else {
+                ConsoleUI.error(result.message)
+                throw ExitCode.failure
+            }
         }
     }
 
@@ -144,54 +159,36 @@ struct FileCommands: AsyncParsableCommand {
             } else {
                 bucketName = try InteractionService.promptForBucket()
             }
-            let (client, dataKey, _, vaultName, _) = try GlobalOptions.createClient(
-                options, overrideBucket: bucketName)
-            defer { Task { try? await client.shutdown() } }
-            print("Using vault: \(vaultName ?? "default") and bucket: \(bucketName)")
-            let local = localPath ?? key
-            let outputPath = local
-            let outputURL = URL(fileURLWithPath: outputPath)
 
-            _ = FileManager.default.createFile(atPath: outputPath, contents: nil)
-            let fileHandle = try FileHandle(forWritingTo: outputURL)
-            defer { try? fileHandle.close() }
+            print("Using vault: \(options.vault ?? "default") and bucket: \(bucketName)")
 
-            // Get file size for progress bar
-            let fileSize = try await client.getObjectSize(key: key) ?? 0
             let progressBar = ConsoleUI.ProgressBar(title: "Downloading \(key)")
 
-            let encryptedStream = try await client.getObjectStream(key: key)
-            let decryptedStream = StreamingEncryption.DecryptedStream(
-                upstream: encryptedStream, key: dataKey)
-
-            var totalBytes = 0
-
-            for try await chunk in decryptedStream {
-                totalBytes += chunk.count
-
-                if fileSize > 0 {
-                    progressBar.update(progress: Double(totalBytes) / Double(fileSize))
-                } else {
-                    // Indeterminate progress if size unknown
+            let input = GetFileInput(
+                bucketName: bucketName,
+                key: key,
+                localPath: localPath,
+                vaultName: options.vault,
+                progressCallback: { totalBytes in
+                    // Update progress bar if we have file size
+                    // The callback will be called with total bytes downloaded
+                    // For now, we'll use indeterminate progress
                     let mb = Double(totalBytes) / 1024 / 1024
                     print(String(format: "\rDownloaded: %.2f MB", mb), terminator: "")
                 }
+            )
 
-                if #available(macOS 10.15.4, *) {
-                    try fileHandle.seekToEnd()
-                } else {
-                    fileHandle.seekToEndOfFile()
-                }
-                fileHandle.write(chunk)
-            }
+            let handler = GetFileHandler(fileService: FileServices.shared.fileOperationsService)
+            let result = try await handler.handle(input: input)
 
-            if fileSize > 0 {
+            if result.fileSize != nil && result.fileSize! > 0 {
+                progressBar.update(progress: Double(result.bytesDownloaded) / Double(result.fileSize!))
                 progressBar.complete()
             } else {
-                print()
+                print() // New line after indeterminate progress
             }
 
-            print("Downloaded \(key) to \(local)")
+            print(result.message)
         }
     }
 
@@ -249,43 +246,23 @@ struct FileCommands: AsyncParsableCommand {
                 return
             }
 
-            let (client, dataKey, _, vaultName, _) = try GlobalOptions.createClient(
-                options, overrideBucket: bucketName)
-            defer { Task { try? await client.shutdown() } }
-            print("Using vault: \(vaultName ?? "default") and bucket: \(bucketName)")
+            print("Using vault: \(options.vault ?? "default") and bucket: \(bucketName)")
 
             let progressBar = ConsoleUI.ProgressBar(title: "Uploading \(remoteKey)")
 
-            let fileHandle = try FileHandle(forReadingFrom: fileURL)
-            defer { try? fileHandle.close() }
-
-            // Track bytes read. Using a class to allow capture in closure.
-            class ProgressTracker: @unchecked Sendable {
-                var totalBytes: Int64 = 0
-            }
-            let tracker = ProgressTracker()
-
-            // Custom AsyncSequence to report progress
-            let progressStream = FileHandleAsyncSequence(
-                fileHandle: fileHandle,
-                chunkSize: StreamingEncryption.chunkSize,
-                progress: { bytesRead in
-                    tracker.totalBytes += Int64(bytesRead)
-                    progressBar.update(progress: Double(tracker.totalBytes) / Double(fileSize))
-                }
+            let input = PutFileInput(
+                bucketName: bucketName,
+                localPath: localPath,
+                remoteKey: remoteKey,
+                dryRun: dryRun,
+                vaultName: options.vault
             )
 
-            // Encrypt using INTERNAL Data Key
-            let encryptedStream = StreamingEncryption.EncryptedStream(
-                upstream: progressStream, key: dataKey)
-
-            let uploadStream = encryptedStream.map { ByteBuffer(data: $0) }
-
-            try await client.putObject(
-                key: remoteKey, stream: uploadStream, length: encryptedSize)
+            let handler = PutFileHandler(fileService: FileServices.shared.fileOperationsService)
+            let result = try await handler.handle(input: input)
 
             progressBar.complete()
-            ConsoleUI.success("Uploaded \(localPath) as \(remoteKey)")
+            ConsoleUI.success(result.message)
         }
 
         private func formatBytes(_ bytes: Int) -> String {
@@ -332,12 +309,22 @@ struct FileCommands: AsyncParsableCommand {
                 }
             }
 
-            let (client, _, _, vaultName, _) = try GlobalOptions.createClient(
-                options, overrideBucket: bucketName)
-            defer { Task { try? await client.shutdown() } }
-            ConsoleUI.dim("Using vault: \(vaultName ?? "default") and bucket: \(bucketName)")
-            try await client.deleteObject(key: key)
-            ConsoleUI.success("Deleted \(key)")
+            let input = DeleteFileInput(
+                bucketName: bucketName,
+                key: key,
+                force: force,
+                vaultName: options.vault
+            )
+
+            let handler = DeleteFileHandler(fileService: FileServices.shared.fileOperationsService)
+            let result = try await handler.handle(input: input)
+
+            if result.success {
+                ConsoleUI.success(result.message)
+            } else {
+                ConsoleUI.error(result.message)
+                throw ExitCode.failure
+            }
         }
     }
 }

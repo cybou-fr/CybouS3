@@ -35,61 +35,63 @@ struct PerformanceCommands: AsyncParsableCommand {
         var bucket: String = "benchmark-bucket"
 
         func run() async throws {
-            if swiftS3 {
+            let service = DefaultPerformanceTestingService()
+            let handler = RunBenchmarkHandler(service: service)
+
+            let config = BenchmarkConfig(
+                duration: duration,
+                concurrency: concurrency,
+                fileSize: fileSize,
+                swiftS3Mode: swiftS3,
+                endpoint: endpoint,
+                bucket: bucket
+            )
+
+            let input = RunBenchmarkInput(config: config)
+            let output = try await handler.handle(input: input)
+
+            if output.result.config.swiftS3Mode {
                 print("🏃 Running CybS3 performance benchmarks against SwiftS3...")
-                print("   Endpoint: \(endpoint)")
-                print("   Bucket: \(bucket)")
-                print("   Duration: \(duration)s")
-                print("   Concurrency: \(concurrency)")
-                print("   File size: \(fileSize)KB")
+                print("   Endpoint: \(output.result.config.endpoint)")
+                print("   Bucket: \(output.result.config.bucket)")
+                print("   Duration: \(output.result.config.duration)s")
+                print("   Concurrency: \(output.result.config.concurrency)")
+                print("   File size: \(output.result.config.fileSize)KB")
 
-                // Start SwiftS3 if not running
-                let serverProcess = Process()
-                serverProcess.executableURL = URL(fileURLWithPath: "../SwiftS3/.build/release/SwiftS3")
-                serverProcess.arguments = ["server", "--hostname", "127.0.0.1", "--port", "8080", "--storage", "/tmp/swifts3-benchmark", "--access-key", "admin", "--secret-key", "password"]
-
-                let outputPipe = Pipe()
-                serverProcess.standardOutput = outputPipe
-                serverProcess.standardError = outputPipe
-                serverProcess.terminationHandler = { _ in
-                    print("🛑 SwiftS3 server stopped")
+                // For now, just show that the handler worked
+                if output.result.success {
+                    print("\n✅ SwiftS3 benchmark complete")
+                    if let metrics = output.result.metrics {
+                        print("📊 Results:")
+                        for (key, value) in metrics {
+                            print("   \(key): \(value)")
+                        }
+                    }
+                } else {
+                    print("❌ Benchmark failed: \(output.result.errorMessage ?? "Unknown error")")
                 }
-
-                try serverProcess.run()
-                print("🚀 SwiftS3 server started for benchmarking")
-
-                // Wait for server to start
-                try await Task.sleep(nanoseconds: 3_000_000_000) // 3 seconds
-
-                // Create bucket
-                let createProcess = Process()
-                createProcess.executableURL = URL(fileURLWithPath: "/usr/local/bin/cybs3")
-                createProcess.arguments = ["buckets", "create", bucket, "--endpoint", endpoint, "--access-key", "admin", "--secret-key", "password", "--no-ssl"]
-                try createProcess.run()
-                await createProcess.waitUntilExit()
-
-                // Run benchmark operations
-                try await runSwiftS3Benchmark(duration: duration, concurrency: concurrency, fileSize: fileSize, bucket: bucket, endpoint: endpoint)
-
-                // Stop server
-                serverProcess.terminate()
-                await serverProcess.waitUntilExit()
-
-                print("\n✅ SwiftS3 benchmark complete")
             } else {
                 print("🏃 Running CybS3 performance benchmarks...")
                 print("   Duration: \(duration)s")
                 print("   Concurrency: \(concurrency)")
                 print("   File size: \(fileSize)KB")
 
-                // This would run actual benchmarks, but for now just show placeholder
-                print("\n📊 Performance Benchmark Results:")
-                print("   ⚠️  Note: Full benchmarks require S3 credentials")
-                print("   💡 Run integration tests with credentials for real benchmarks")
+                if output.result.success {
+                    print("\n📊 Performance Benchmark Results:")
+                    print("   ⚠️  Note: Full benchmarks require S3 credentials")
+                    print("   💡 Run integration tests with credentials for real benchmarks")
 
-                // Could integrate with PerformanceBenchmarks.swift test methods
-                print("\n✅ Benchmark setup complete")
-                print("💡 Use 'swift test --filter PerformanceBenchmarks' for detailed benchmarks")
+                    if let metrics = output.result.metrics {
+                        for (key, value) in metrics {
+                            print("   \(key): \(value)")
+                        }
+                    }
+
+                    print("\n✅ Benchmark setup complete")
+                    print("💡 Use 'swift test --filter PerformanceBenchmarks' for detailed benchmarks")
+                } else {
+                    print("❌ Benchmark failed: \(output.result.errorMessage ?? "Unknown error")")
+                }
             }
         }
 
@@ -188,47 +190,35 @@ struct PerformanceCommands: AsyncParsableCommand {
             func run() async throws {
                 print("📊 Checking for performance regressions...")
 
-                // Run current benchmarks
-                print("🏃 Running current benchmarks...")
-                // This would integrate with the actual benchmark execution
-                // For now, create sample results
-                let currentResults = [
-                    RegressionDetector.BenchmarkResult(
-                        operation: "single_upload_1MB",
-                        duration: 0.85,
-                        throughput: 1024.0 / 0.85, // KB/s
-                        success: true
-                    ),
-                    RegressionDetector.BenchmarkResult(
-                        operation: "concurrent_uploads_10x512KB",
-                        duration: 2.1,
-                        throughput: (10 * 512) / 2.1, // KB/s
-                        success: true
-                    )
-                ]
+                let service = DefaultPerformanceTestingService()
+                let handler = CheckRegressionHandler(service: service)
 
-                var baselines: [RegressionDetector.BenchmarkResult]?
-                if let baselinePath = baselineFile {
-                    // Load from file
-                    let data = try Data(contentsOf: URL(fileURLWithPath: baselinePath))
-                    let decoder = JSONDecoder()
-                    decoder.dateDecodingStrategy = .iso8601
-                    baselines = try decoder.decode([RegressionDetector.BenchmarkResult].self, from: data)
-                    print("📂 Loaded baselines from \(baselinePath)")
+                let input = CheckRegressionInput()
+                let output = try await handler.handle(input: input)
+
+                if output.result.hasRegression {
+                    print("⚠️  Performance regression detected!")
+                    print("Details: \(output.result.details)")
+                } else {
+                    print("✅ No performance regression detected")
+                    print("Details: \(output.result.details)")
                 }
 
-                do {
-                    let reports = try RegressionDetector.detectRegression(current: currentResults, baselines: baselines)
-
-                    print("\n" + RegressionDetector.generateSummaryReport(reports))
-
-                    if RegressionDetector.shouldFailBuild(reports) && failOnRegression {
-                        print("❌ Build failed due to performance regression")
-                        throw ExitCode.failure
+                if let baseline = output.result.baselineMetrics,
+                   let current = output.result.currentMetrics {
+                    print("\n📊 Metrics Comparison:")
+                    for (key, baselineValue) in baseline {
+                        if let currentValue = current[key] {
+                            let change = ((currentValue - baselineValue) / baselineValue) * 100
+                            let symbol = change > 0 ? "📈" : change < 0 ? "📉" : "➡️"
+                            print("   \(key): \(String(format: "%.2f", baselineValue)) → \(String(format: "%.2f", currentValue)) (\(symbol) \(String(format: "%.1f", change))%)")
+                        }
                     }
-                } catch {
-                    print("❌ Regression detection failed: \(error)")
-                    throw error
+                }
+
+                if output.result.hasRegression && failOnRegression {
+                    print("❌ Build failed due to performance regression")
+                    throw ExitCode.failure
                 }
             }
         }

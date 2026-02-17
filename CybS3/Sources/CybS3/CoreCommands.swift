@@ -30,14 +30,17 @@ struct CoreCommands: AsyncParsableCommand {
             do {
                 let mnemonic = try InteractionService.promptForMnemonic(purpose: "login")
 
-                // Verify it works by trying to load config
-                // If it's a new user, load() creates a new config.
-                // If existing user, load() checks if it decrypts.
-                _ = try StorageService.load(mnemonic: mnemonic)
+                let handler = LoginHandler(authService: CoreServices.shared.authService)
+                let result = try await handler.handle(input: LoginInput(mnemonic: mnemonic))
 
-                try KeychainService.save(mnemonic: mnemonic)
-                ConsoleUI.success("Login successful. Mnemonic stored securely in Keychain.")
-                ConsoleUI.dim("You can now run commands without entering your mnemonic.")
+                if result.success {
+                    ConsoleUI.success(result.message)
+                    ConsoleUI.dim("You can now run commands without entering your mnemonic.")
+                } else {
+                    ConsoleUI.error(result.message)
+                    throw ExitCode.failure
+                }
+
             } catch let error as InteractionError {
                 CLIError.from(error).printError()
                 throw ExitCode.failure
@@ -61,13 +64,13 @@ struct CoreCommands: AsyncParsableCommand {
         )
 
         func run() async throws {
-            do {
-                try KeychainService.delete()
-                ConsoleUI.success("Logout successful. Mnemonic removed from Keychain.")
-            } catch KeychainError.itemNotFound {
-                ConsoleUI.warning("No active session found. Already logged out.")
-            } catch {
-                ConsoleUI.error("Logout failed: \(error.localizedDescription)")
+            let handler = LogoutHandler(authService: CoreServices.shared.authService)
+            let result = try await handler.handle(input: LogoutInput())
+
+            if result.success {
+                ConsoleUI.success(result.message)
+            } else {
+                ConsoleUI.error(result.message)
             }
         }
     }
@@ -110,83 +113,57 @@ struct CoreCommands: AsyncParsableCommand {
                 let mnemonic = try InteractionService.promptForMnemonic(
                     purpose: "modify configuration")
 
-                if list {
-                    let (config, _) = try StorageService.load(mnemonic: mnemonic)
-                    ConsoleUI.header("Current Configuration")
-                    print("Settings:")
-                    print("  Endpoint: \(config.settings.endpoint ?? "not set")")
-                    print("  Region: \(config.settings.region ?? "not set")")
-                    print("  Bucket: \(config.settings.bucket ?? "not set")")
-                    print("  Access Key: \(config.settings.accessKey?.prefix(8) ?? "not set")...")
-                    print()
-                    print("Vaults:")
-                    for vault in config.vaults {
-                        let active = vault.name == config.activeVaultName ? " (active)" : ""
-                        print("  \(vault.name)\(active)")
-                        print("    Endpoint: \(vault.endpoint ?? "inherits from global")")
-                        print("    Region: \(vault.region ?? "inherits from global")")
-                        print("    Bucket: \(vault.bucket ?? "inherits from global")")
-                        print("    Access Key: \(vault.accessKey?.prefix(8) ?? "inherits from global")...")
+                let input = ConfigInput(
+                    mnemonic: mnemonic,
+                    list: list,
+                    reset: reset,
+                    accessKey: accessKey,
+                    secretKey: secretKey,
+                    endpoint: endpoint,
+                    region: region,
+                    bucket: bucket,
+                    createVault: createVault,
+                    activeVault: activeVault
+                )
+
+                let handler = ConfigHandler(configService: CoreServices.shared.configService)
+                let result = try await handler.handle(input: input)
+
+                if result.success {
+                    ConsoleUI.success(result.message)
+
+                    // Handle list output
+                    if let config = result.config {
+                        ConsoleUI.header("Current Configuration")
+                        print("Settings:")
+                        print("  Endpoint: \(config.settings.endpoint ?? "not set")")
+                        print("  Region: \(config.settings.region ?? "not set")")
+                        print("  Bucket: \(config.settings.bucket ?? "not set")")
+                        print("  Access Key: \(config.settings.accessKey?.prefix(8) ?? "not set")...")
+                        print()
+                        print("Vaults:")
+                        for vault in config.vaults {
+                            let active = vault.name == config.activeVaultName ? " (active)" : ""
+                            print("  \(vault.name)\(active)")
+                            print("    Endpoint: \(vault.endpoint ?? "inherits from global")")
+                            print("    Region: \(vault.region ?? "inherits from global")")
+                            print("    Bucket: \(vault.bucket ?? "inherits from global")")
+                            print("    Access Key: \(vault.accessKey?.prefix(8) ?? "inherits from global")...")
+                        }
                     }
-                    return
+                } else {
+                    ConsoleUI.error(result.message)
+                    throw ExitCode.failure
                 }
-
-                if reset {
-                    guard InteractionService.confirm(message: "Reset configuration to defaults?", defaultValue: false) else {
-                        ConsoleUI.info("Operation cancelled.")
-                        return
-                    }
-                    try StorageService.reset()
-                    ConsoleUI.success("Configuration reset to defaults.")
-                    return
-                }
-
-                var (config, dataKey) = try StorageService.load(mnemonic: mnemonic)
-
-                // Update global settings
-                if let accessKey = accessKey {
-                    config.settings.accessKey = accessKey
-                }
-                if let secretKey = secretKey {
-                    config.settings.secretKey = secretKey
-                }
-                if let endpoint = endpoint {
-                    config.settings.endpoint = endpoint
-                }
-                if let region = region {
-                    config.settings.region = region
-                }
-                if let bucket = bucket {
-                    config.settings.bucket = bucket
-                }
-
-                // Vault management
-                if let vaultName = createVault {
-                    if config.vaults.contains(where: { $0.name == vaultName }) {
-                        ConsoleUI.error("Vault '\(vaultName)' already exists.")
-                        throw ExitCode.failure
-                    }
-                    config.vaults.append(VaultConfig(name: vaultName))
-                    ConsoleUI.success("Created vault: \(vaultName)")
-                }
-
-                if let vaultName = activeVault {
-                    if !config.vaults.contains(where: { $0.name == vaultName }) {
-                        ConsoleUI.error("Vault '\(vaultName)' does not exist.")
-                        throw ExitCode.failure
-                    }
-                    config.activeVaultName = vaultName
-                    ConsoleUI.success("Set active vault: \(vaultName)")
-                }
-
-                try StorageService.save(config: config, dataKey: dataKey)
-                ConsoleUI.success("Configuration updated.")
 
             } catch let error as InteractionError {
                 CLIError.from(error).printError()
                 throw ExitCode.failure
             } catch let error as StorageError {
                 CLIError.from(error).printError()
+                throw ExitCode.failure
+            } catch let error as ConfigurationError {
+                ConsoleUI.error("Configuration error: \(error.localizedDescription)")
                 throw ExitCode.failure
             } catch {
                 ConsoleUI.error("Configuration failed: \(error.localizedDescription)")

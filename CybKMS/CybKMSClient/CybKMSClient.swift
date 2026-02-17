@@ -3,6 +3,50 @@ import Foundation
 import Logging
 import NIOCore
 
+/// KMS Key State enumeration
+public enum KMSKeyState: String, Codable, Sendable {
+    case enabled = "Enabled"
+    case disabled = "Disabled"
+    case pendingDeletion = "PendingDeletion"
+    case pendingImport = "PendingImport"
+    case unavailable = "Unavailable"
+}
+
+/// KMS Encryption Algorithm
+public enum KMSEncryptionAlgorithm: String, Codable, Sendable {
+    case symmetricDefault = "SYMMETRIC_DEFAULT"
+}
+
+/// Result of a KMS encrypt operation
+public struct KMSEncryptResult: Codable, Sendable {
+    public let ciphertextBlob: Data
+    public let keyId: String
+    public let arn: String
+    public let encryptionAlgorithm: KMSEncryptionAlgorithm
+
+    public init(ciphertextBlob: Data, keyId: String, arn: String, encryptionAlgorithm: KMSEncryptionAlgorithm = .symmetricDefault) {
+        self.ciphertextBlob = ciphertextBlob
+        self.keyId = keyId
+        self.arn = arn
+        self.encryptionAlgorithm = encryptionAlgorithm
+    }
+}
+
+/// Result of a KMS decrypt operation
+public struct KMSDecryptResult: Codable, Sendable {
+    public let plaintext: Data
+    public let keyId: String
+    public let arn: String
+    public let encryptionAlgorithm: KMSEncryptionAlgorithm
+
+    public init(plaintext: Data, keyId: String, arn: String, encryptionAlgorithm: KMSEncryptionAlgorithm = .symmetricDefault) {
+        self.plaintext = plaintext
+        self.keyId = keyId
+        self.arn = arn
+        self.encryptionAlgorithm = encryptionAlgorithm
+    }
+}
+
 /// CybKMS Client - HTTP client for communicating with CybKMS server
 public actor CybKMSClient {
     private let httpClient: HTTPClient
@@ -109,7 +153,7 @@ public actor CybKMSClient {
         request.headers.add(name: "Content-Type", value: "application/json")
 
         let jsonData = try JSONEncoder().encode(body)
-        request.body = .bytes(ByteBuffer(data: jsonData))
+        request.body = .bytes(ByteBuffer(bytes: jsonData))
 
         let response = try await httpClient.execute(request, timeout: .seconds(30))
 
@@ -130,14 +174,9 @@ public actor CybKMSClient {
 // MARK: - Supporting Types
 
 private struct EmptyInput: Encodable {}
-
-// Re-export types from KMSCore for client usage
-public typealias KMSEncryptResult = CybKMS.KMSEncryptResult
-public typealias KMSDecryptResult = CybKMS.KMSDecryptResult
 public typealias KMSEncryptionAlgorithm = CybKMS.KMSEncryptionAlgorithm
 public typealias KMSKeySpec = CybKMS.KMSKeySpec
 public typealias KMSKeyUsage = CybKMS.KMSKeyUsage
-public typealias KMSKeyState = CybKMS.KMSKeyState
 public typealias KMSKeyMetadata = CybKMS.KMSKeyMetadata
 public typealias KMSError = CybKMS.KMSError
 

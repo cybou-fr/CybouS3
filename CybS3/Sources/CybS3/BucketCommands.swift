@@ -30,9 +30,15 @@ struct BucketCommands: AsyncParsableCommand {
                 let (client, _, _, vaultName, _) = try GlobalOptions.createClient(
                     options, overrideBucket: bucketName)
                 defer { Task { try? await client.shutdown() } }
-                ConsoleUI.dim("Using vault: \(vaultName ?? "default")")
-                try await client.createBucket(name: bucketName)
-                ConsoleUI.success("Created bucket: \(bucketName)")
+
+                let service = DefaultBucketOperationsService(client: client)
+                let handler = CreateBucketHandler(service: service)
+
+                let input = CreateBucketInput(bucketName: bucketName, vaultName: vaultName)
+                let output = try await handler.handle(input: input)
+
+                ConsoleUI.dim("Using vault: \(output.vaultName ?? "default")")
+                ConsoleUI.success("Created bucket: \(output.bucketName)")
             } catch let error as S3Error {
                 ConsoleUI.error(error.localizedDescription)
                 throw ExitCode.failure
@@ -66,9 +72,15 @@ struct BucketCommands: AsyncParsableCommand {
             do {
                 let (client, _, _, vaultName, _) = try GlobalOptions.createClient(options)
                 defer { Task { try? await client.shutdown() } }
-                ConsoleUI.dim("Using vault: \(vaultName ?? "default")")
-                try await client.deleteBucket(name: bucketName)
-                ConsoleUI.success("Deleted bucket: \(bucketName)")
+
+                let service = DefaultBucketOperationsService(client: client)
+                let handler = DeleteBucketHandler(service: service)
+
+                let input = DeleteBucketInput(bucketName: bucketName, vaultName: vaultName, force: force)
+                let output = try await handler.handle(input: input)
+
+                ConsoleUI.dim("Using vault: \(output.vaultName ?? "default")")
+                ConsoleUI.success("Deleted bucket: \(output.bucketName)")
             } catch let error as S3Error {
                 ConsoleUI.error(error.localizedDescription)
                 throw ExitCode.failure
@@ -90,19 +102,22 @@ struct BucketCommands: AsyncParsableCommand {
         func run() async throws {
             let (client, _, _, vaultName, _) = try GlobalOptions.createClient(options)
             defer { Task { try? await client.shutdown() } }
-            if !json {
-                print("Using vault: \(vaultName ?? "default")")
-            }
-            let buckets = try await client.listBuckets()
 
-            if json {
+            let service = DefaultBucketOperationsService(client: client)
+            let handler = ListBucketsHandler(service: service)
+
+            let input = ListBucketsInput(vaultName: vaultName, json: json)
+            let output = try await handler.handle(input: input)
+
+            if output.json {
                 let encoder = JSONEncoder()
                 encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-                let data = try encoder.encode(["buckets": buckets])
+                let data = try encoder.encode(["buckets": output.buckets])
                 print(String(data: data, encoding: .utf8) ?? "[]")
             } else {
+                print("Using vault: \(output.vaultName ?? "default")")
                 print("Buckets:")
-                for bucket in buckets {
+                for bucket in output.buckets {
                     print("  \(bucket)")
                 }
             }
