@@ -63,66 +63,63 @@
 
 ### **Phase 0: Ecosystem Cleanup (Priority: Critical)**
 
-#### **0.1 Remove Legacy CybKMS Integration**
+#### **0.1 Remove Legacy CybKMS Integration** ✅
 ```
 SwiftS3/Sources/SwiftS3/CybKMS/
-├── CybKMSService.swift          # DELETE - 404 lines of legacy code
-└── (remove entire directory)
+├── CybKMSService.swift          # DELETED
+└── (directory removed)
 ```
 
 **Rationale:** The embedded CybKMS service has been replaced by the standalone CybKMS package. This legacy code creates confusion and maintenance overhead.
 
 **Impact:** Reduces SwiftS3 codebase by ~400 lines, eliminates duplicate KMS implementations.
 
-#### **0.2 Update Cross-Component Dependencies**
-- Update SwiftS3 Package.swift to use CybKMSClient library
-- Remove CybKMSService imports from FileSystemStorage
-- Update integration tests to use standalone CybKMS server
+#### **0.2 Update Cross-Component Dependencies** ✅
+- [x] Update SwiftS3 Package.swift to use CybKMSClient library
+- [x] Remove CybKMSService imports from FileSystemStorage
+- [x] Update integration tests to use standalone CybKMS server
 
-#### **0.3 Fix Compilation Issues** 🔧 **NEW - HIGH PRIORITY**
-- **CybKMSClient.swift**: Remove duplicate struct declarations
-- **BucketHandlers.swift**: Clean malformed file content
-- **MockServices.swift**: Add missing protocol conformances
-- **CoreHandlers.swift**: Fix missing type imports
-- **Validate builds**: Ensure all components compile successfully
+#### **0.3 Fix Compilation Issues** 🔧 **COMPLETED**
+- [x] **CybKMSClient.swift**: Remove duplicate struct declarations
+- [x] **BucketHandlers.swift**: Clean malformed file content
+- [x] **MockServices.swift**: Add missing protocol conformances
+- [x] **CoreHandlers.swift**: Fix missing type imports
+- [x] **Validate builds**: Ensure all components compile successfully
 
 ### **Phase 1: File Structure Refactoring (Priority: High)**
 
-#### **1.1 Split Commands.swift into Command Groups**
+#### **1.1 Split Commands.swift into Command Groups** ✅
 ```
-CybS3/Sources/cybs3/Commands/
+CybS3/Sources/CybS3/Commands/
+├── GlobalOptions.swift         # Extracted
+├── HealthCommands.swift        # Extracted
+├── ChaosCommands.swift         # Extracted
+├── TestCommands.swift          # Extracted
 ├── CoreCommands.swift          # Login, Logout, Config
 ├── FileCommands.swift          # Files operations (List, Get, Put, Delete, Copy)
 ├── BucketCommands.swift        # Bucket operations (Create, Delete, List)
-├── VaultCommands.swift         # Vault management
-├── ServerCommands.swift        # Server management (Start, Stop, Status, Logs)
-├── ComplianceCommands.swift    # Compliance checking and reporting
-├── BackupCommands.swift        # Already separated - good
-├── MultiCloudCommands.swift    # Already separated - good
-└── PerformanceCommands.swift   # Performance testing
+└── ...
 ```
 
-#### **1.2 Split S3Controller.swift into Route Handlers**
+#### **1.2 Split S3Controller.swift into Route Handlers** ✅
 ```
 SwiftS3/Sources/SwiftS3/Controllers/
-├── S3Controller.swift          # Main controller (reduced to ~200 lines)
-├── BucketRoutes.swift          # Bucket operations
-├── ObjectRoutes.swift          # Object operations (GET, PUT, DELETE)
-├── AdminRoutes.swift           # Admin operations (metrics, audit)
-├── BatchRoutes.swift           # Batch job operations
+├── S3Controller.swift          # Main controller (Delegates to extensions)
+├── BucketRoutes.swift          # Extracted
+├── ObjectRoutes.swift          # Extracted
+├── AdminRoutes.swift           # Extracted (Admin, Analytics, Batch)
 └── Middleware/
-    ├── AuthMiddleware.swift
-    ├── MetricsMiddleware.swift
-    └── AuditMiddleware.swift
+    ├── S3Metrics.swift         # Extracted
+    └── ...
 ```
 
-#### **1.3 Split FileSystemStorage.swift into Focused Components**
+#### **1.3 Split FileSystemStorage.swift into Focused Components** 🔄 **IN PROGRESS**
 ```
 SwiftS3/Sources/SwiftS3/Storage/
-├── FileSystemStorage.swift     # Main storage actor (~300 lines)
+├── FileSystemStorage.swift     # Main storage actor
 ├── StorageOperations.swift     # Core CRUD operations
 ├── EncryptionHandler.swift     # SSE-KMS integration with CybKMS
-├── MetadataHandler.swift       # Metadata management
+├── SQLMetadataStore.swift      # ✅ SQL-based Metadata management (Completed)
 └── IntegrityChecker.swift      # Data integrity verification
 ```
 
@@ -715,11 +712,16 @@ struct EcosystemIntegrationTests {
 - ✅ **Audit Logging**: File-based audit storage with structured JSON entries
 - ✅ **Unified Auth Service**: Cross-component authentication validation
 
-### **Current: Phase 0 - Ecosystem Cleanup** 🔧 **IN PROGRESS**
-- 🔧 **Fix Compilation Issues**: Address CybKMSClient duplicates, malformed files, missing types
-- ⏳ **Remove Legacy CybKMS Integration**: Clean up embedded KMS service from SwiftS3
-- ⏳ **Update Cross-Component Dependencies**: Standardize CybKMSClient usage
-- 🔧 **Validate Multi-Cloud Integration**: Test IDrive functionality after fixes
+### **Completed: Phase 0 & Phase 1 - Cleanup & Refactoring** ✅
+- ✅ **Ecosystem Cleanup**: Legacy CybKMS removed, compilation fixed, duplicates removed.
+- ✅ **Command Refactoring**: `Commands.swift` split into focused command files.
+- ✅ **Controller Refactoring**: `S3Controller.swift` split into Route Handlers (Bucket, Object, Admin).
+- ✅ **Metadata Layer**: `SQLMetadataStore` integrated for robust metadata management.
+
+### **Current: Phase 1.3 & Phase 2 - Encryption & Architecture** 🔄
+- 🔄 **Storage Refactoring**: Split `FileSystemStorage.swift` (Encryption/Integrity handlers pending).
+- ⏳ **Architecture Improvements**: Command Handler pattern, Service Layer refactoring.
+- ⏳ **Advanced Security**: Reviewing `S3Authenticator` and `PolicyEvaluator` for Phase 3 enhancements.
 
 ### **Week 1-2: Remaining Work Completion**
 - **Immediate Fixes**: Resolve all compilation issues and validate builds
