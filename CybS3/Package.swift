@@ -21,6 +21,7 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-log", from: "1.5.0"),
         .package(url: "https://github.com/cybou-fr/SwiftBIP39.git", branch: "main"),
         .package(url: "https://github.com/typelift/SwiftCheck.git", from: "0.12.0"),
+        .package(path: "../CybKMS"),
     ],
     targets: [
         .target(
@@ -30,6 +31,7 @@ let package = Package(
                 .product(name: "AsyncHTTPClient", package: "async-http-client"),
                 .product(name: "Logging", package: "swift-log"),
                 "SwiftBIP39",
+                .product(name: "CybKMSClient", package: "CybKMS"),
             ]
         ),
         .executableTarget(
@@ -43,8 +45,7 @@ let package = Package(
         .testTarget(
             name: "CybS3Tests",
             dependencies: [
-                "CybS3Lib",
-                .product(name: "SwiftCheck", package: "SwiftCheck")
+                "CybS3Lib"
             ]
         ),
     ]

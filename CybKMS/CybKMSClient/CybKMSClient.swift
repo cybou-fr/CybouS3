@@ -12,9 +12,135 @@ public enum KMSKeyState: String, Codable, Sendable {
     case unavailable = "Unavailable"
 }
 
-/// KMS Encryption Algorithm
+/// KMS encryption algorithms
 public enum KMSEncryptionAlgorithm: String, Codable, Sendable {
     case symmetricDefault = "SYMMETRIC_DEFAULT"
+}
+
+/// KMS key specification
+public enum KMSKeySpec: String, Codable, Sendable {
+    case symmetricDefault = "SYMMETRIC_DEFAULT"
+    case rsa2048 = "RSA_2048"
+    case rsa3072 = "RSA_3072"
+    case rsa4096 = "RSA_4096"
+    case eccNistP256 = "ECC_NIST_P256"
+    case eccNistP384 = "ECC_NIST_P384"
+    case eccNistP521 = "ECC_NIST_P521"
+}
+
+/// KMS key usage
+public enum KMSKeyUsage: String, Codable, Sendable {
+    case encryptDecrypt = "ENCRYPT_DECRYPT"
+    case signVerify = "SIGN_VERIFY"
+    case generateVerifyMac = "GENERATE_VERIFY_MAC"
+}
+
+/// KMS key metadata
+public struct KMSKeyMetadata: Codable, Sendable {
+    public let keyId: String
+    public let arn: String
+    public let description: String?
+    public let keyUsage: KMSKeyUsage
+    public let keyState: KMSKeyState
+    public let keyManager: String
+    public let keySpec: KMSKeySpec
+    public let creationDate: Date
+    public let enabled: Bool
+    public let deletionDate: Date?
+    public let validTo: Date?
+    public let origin: String
+    public let customKeyStoreId: String?
+    public let cloudHsmClusterId: String?
+    public let expirationModel: String?
+    public let keyManagerId: String?
+    public let multiRegion: Bool
+    public let multiRegionConfiguration: [String: String]?
+    public let pendingDeletionWindowInDays: Int?
+
+    public init(
+        keyId: String,
+        arn: String,
+        description: String? = nil,
+        keyUsage: KMSKeyUsage,
+        keyState: KMSKeyState,
+        keyManager: String,
+        keySpec: KMSKeySpec,
+        creationDate: Date,
+        enabled: Bool,
+        deletionDate: Date? = nil,
+        validTo: Date? = nil,
+        origin: String,
+        customKeyStoreId: String? = nil,
+        cloudHsmClusterId: String? = nil,
+        expirationModel: String? = nil,
+        keyManagerId: String? = nil,
+        multiRegion: Bool = false,
+        multiRegionConfiguration: [String: String]? = nil,
+        pendingDeletionWindowInDays: Int? = nil
+    ) {
+        self.keyId = keyId
+        self.arn = arn
+        self.description = description
+        self.keyUsage = keyUsage
+        self.keyState = keyState
+        self.keyManager = keyManager
+        self.keySpec = keySpec
+        self.creationDate = creationDate
+        self.enabled = enabled
+        self.deletionDate = deletionDate
+        self.validTo = validTo
+        self.origin = origin
+        self.customKeyStoreId = customKeyStoreId
+        self.cloudHsmClusterId = cloudHsmClusterId
+        self.expirationModel = expirationModel
+        self.keyManagerId = keyManagerId
+        self.multiRegion = multiRegion
+        self.multiRegionConfiguration = multiRegionConfiguration
+        self.pendingDeletionWindowInDays = pendingDeletionWindowInDays
+    }
+}
+
+/// KMS error
+public struct KMSError: Error, Codable, Sendable {
+    public let type: String
+    public let message: String
+    public let code: String?
+
+    public init(type: String, message: String, code: String? = nil) {
+        self.type = type
+        self.message = message
+        self.code = code
+    }
+}
+
+/// Result of a KMS encrypt operation
+public struct KMSEncryptResult: Codable, Sendable {
+    public let ciphertextBlob: Data
+    public let keyId: String
+    public let arn: String
+    public let encryptionAlgorithm: KMSEncryptionAlgorithm
+
+    public init(ciphertextBlob: Data, keyId: String, arn: String, encryptionAlgorithm: KMSEncryptionAlgorithm = .symmetricDefault) {
+        self.ciphertextBlob = ciphertextBlob
+        self.keyId = keyId
+        self.arn = arn
+        self.encryptionAlgorithm = encryptionAlgorithm
+    }
+}
+
+/// Result of a KMS decrypt operation
+public struct KMSDecryptResult: Codable, Sendable {
+    public let plaintext: Data
+    public let keyId: String
+    public let arn: String
+    public let encryptionAlgorithm: KMSEncryptionAlgorithm
+
+    public init(plaintext: Data, keyId: String, arn: String, encryptionAlgorithm: KMSEncryptionAlgorithm = .symmetricDefault) {
+        self.plaintext = plaintext
+        self.keyId = keyId
+        self.arn = arn
+        self.encryptionAlgorithm = encryptionAlgorithm
+    }
 }
 
 /// Result of a KMS encrypt operation
@@ -72,7 +198,7 @@ public actor CybKMSClient {
 
     /// Create a new KMS key
     public func createKey(description: String? = nil, keyUsage: KMSKeyUsage = .encryptDecrypt) async throws -> KMSKeyMetadata {
-        let input = CreateKeyInput(description: description, keyUsage: keyUsage)
+        let input = CreateKeyInput(description: description, keyUsage: keyUsage, keySpec: .symmetricDefault)
         return try await post("/CreateKey", body: input)
     }
 
@@ -174,11 +300,6 @@ public actor CybKMSClient {
 // MARK: - Supporting Types
 
 private struct EmptyInput: Encodable {}
-public typealias KMSEncryptionAlgorithm = CybKMS.KMSEncryptionAlgorithm
-public typealias KMSKeySpec = CybKMS.KMSKeySpec
-public typealias KMSKeyUsage = CybKMS.KMSKeyUsage
-public typealias KMSKeyMetadata = CybKMS.KMSKeyMetadata
-public typealias KMSError = CybKMS.KMSError
 
 // Input types (duplicated from server for client use)
 private struct CreateKeyInput: Encodable {

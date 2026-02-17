@@ -69,6 +69,11 @@ struct S3Server {
             return Response(status: .ok, headers: [.contentType: "text/plain"], body: .init(byteBuffer: ByteBuffer(string: metricsOutput)))
         }
         
+        // Add health check endpoint before authentication
+        router.get("/_health") { request, context in
+            return Response(status: .ok, headers: [.contentType: "application/json"], body: .init(byteBuffer: ByteBuffer(string: #"{"status":"healthy","service":"SwiftS3","version":"1.0.0"}"#)))
+        }
+        
         router.middlewares.add(S3Authenticator(userStore: userStore))
         router.middlewares.add(S3VpcMiddleware(storage: storage))
         router.middlewares.add(S3AuditMiddleware(storage: storage))

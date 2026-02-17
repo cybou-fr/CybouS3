@@ -55,9 +55,7 @@ public struct ChaosEngine {
     public static func injectFault(_ fault: FaultType, duration: TimeInterval, identifier: String? = nil) async throws {
         let faultId = identifier ?? UUID().uuidString
 
-        faultQueue.async {
-            activeFaults[faultId] = fault
-        }
+        activeFaults[faultId] = fault
 
         print("🔥 Chaos: Injected fault '\(faultId)' for \(String(format: "%.1f", duration))s")
 
@@ -67,7 +65,7 @@ public struct ChaosEngine {
         // Schedule fault removal
         try await Task.sleep(nanoseconds: UInt64(duration * 1_000_000_000))
 
-        faultQueue.async {
+        await MainActor.run {
             activeFaults.removeValue(forKey: faultId)
         }
 
@@ -93,9 +91,7 @@ public struct ChaosEngine {
     /// Clear all active faults.
     @MainActor
     public static func clearAllFaults() {
-        faultQueue.async {
-            activeFaults.removeAll()
-        }
+        activeFaults.removeAll()
         print("🧹 Chaos: Cleared all active faults")
     }
 

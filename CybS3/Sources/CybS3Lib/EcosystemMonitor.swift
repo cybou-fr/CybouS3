@@ -88,6 +88,9 @@ public struct EcosystemMonitor {
         componentHealth["SwiftS3-Server"] = await checkSwiftS3Health()
         componentHealth["SwiftS3-Storage"] = await checkSwiftS3StorageHealth()
 
+        // CybKMS components (if available)
+        componentHealth["CybKMS-Server"] = await checkCybKMSHealth()
+
         // Check dependencies
         let dependencies = await validateDependencies()
 
@@ -124,6 +127,17 @@ public struct EcosystemMonitor {
             }
         } catch {
             issues.append("Connectivity check failed: \(error.localizedDescription)")
+        }
+
+        // Check CybS3 ↔ CybKMS connectivity
+        checkedDependencies.append("CybS3-CybKMS-Connectivity")
+        do {
+            let connectivityHealthy = try await checkCybS3CybKMSConnectivity()
+            if !connectivityHealthy {
+                issues.append("CybS3 cannot connect to CybKMS server")
+            }
+        } catch {
+            issues.append("CybKMS connectivity check failed: \(error.localizedDescription)")
         }
 
         // Check unified authentication
@@ -298,6 +312,40 @@ public struct EcosystemMonitor {
         }
     }
 
+    private static func checkCybKMSHealth() async -> HealthStatus {
+        var issues = [String]()
+        var details = [String: String]()
+
+        // Try to connect to CybKMS server
+        do {
+            let client = HTTPClient()
+            defer { try? client.shutdown() }
+
+            let request = HTTPClientRequest(url: "http://127.0.0.1:8081/health")
+            let response = try await client.execute(request, timeout: .seconds(5))
+
+            if response.status.code == 200 {
+                details["cybKMS_connectivity"] = "healthy"
+                details["cybKMS_status_code"] = "\(response.status.code)"
+            } else {
+                issues.append("CybKMS server responded with status \(response.status.code)")
+                details["cybKMS_connectivity"] = "degraded"
+                details["cybKMS_status_code"] = "\(response.status.code)"
+            }
+        } catch {
+            issues.append("Cannot connect to CybKMS server: \(error.localizedDescription)")
+            details["cybKMS_connectivity"] = "unreachable"
+        }
+
+        if issues.isEmpty {
+            return .healthy(details: details)
+        } else if issues.count <= 1 {
+            return .degraded(details: details, issues: issues)
+        } else {
+            return .unhealthy(details: details, issues: issues)
+        }
+    }
+
     private static func checkCybS3SwiftS3Connectivity() async throws -> Bool {
         // Try a simple operation that requires CybS3 ↔ SwiftS3 communication
         do {
@@ -305,6 +353,21 @@ public struct EcosystemMonitor {
             defer { try? client.shutdown() }
 
             let request = HTTPClientRequest(url: "http://127.0.0.1:8080/")
+            let response = try await client.execute(request, timeout: .seconds(5))
+
+            return response.status.code >= 200 && response.status.code < 300
+        } catch {
+            return false
+        }
+    }
+
+    private static func checkCybS3CybKMSConnectivity() async throws -> Bool {
+        // Try a simple operation that requires CybS3 ↔ CybKMS communication
+        do {
+            let client = HTTPClient()
+            defer { try? client.shutdown() }
+
+            let request = HTTPClientRequest(url: "http://127.0.0.1:8081/health")
             let response = try await client.execute(request, timeout: .seconds(5))
 
             return response.status.code >= 200 && response.status.code < 300
@@ -331,9 +394,14 @@ public struct EcosystemMonitor {
         // Check for cascading failures
         let cybS3Healthy = componentHealth["CybS3-Core"]?.isHealthy ?? false
         let swiftS3Healthy = componentHealth["SwiftS3-Server"]?.isHealthy ?? false
+        let cybKMSHealthy = componentHealth["CybKMS-Server"]?.isHealthy ?? false
 
-        if !cybS3Healthy && !swiftS3Healthy {
+        if !cybS3Healthy && !swiftS3Healthy && !cybKMSHealthy {
+            issues.append("All three ecosystem components (CybS3, SwiftS3, CybKMS) are unhealthy - critical ecosystem failure")
+        } else if !cybS3Healthy && !swiftS3Healthy {
             issues.append("Both CybS3 and SwiftS3 are unhealthy - potential ecosystem-wide issue")
+        } else if !cybS3Healthy && !cybKMSHealthy {
+            issues.append("Both CybS3 and CybKMS are unhealthy - encryption and key management compromised")
         }
 
         if !dependencies.isHealthy {
