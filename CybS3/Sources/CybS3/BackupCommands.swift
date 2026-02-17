@@ -72,17 +72,15 @@ struct CreateBackupConfig: ParsableCommand {
     var encryption: Bool = true
 
     func run() async throws {
-        let console = ConsoleUI()
-
         do {
             // Parse providers
             guard let sourceProviderEnum = CloudProvider(rawValue: sourceProvider.lowercased()) else {
-                console.error("Invalid source provider: \(sourceProvider)")
+                ConsoleUI.error("Invalid source provider: \(sourceProvider)")
                 throw ValidationError("Invalid source provider")
             }
 
             guard let destProviderEnum = CloudProvider(rawValue: destProvider.lowercased()) else {
-                console.error("Invalid destination provider: \(destProvider)")
+                ConsoleUI.error("Invalid destination provider: \(destProvider)")
                 throw ValidationError("Invalid destination provider")
             }
 
@@ -95,64 +93,63 @@ struct CreateBackupConfig: ParsableCommand {
             switch schedule.lowercased() {
             case "cron":
                 // For simplicity, use daily for cron
-                backupSchedule = .daily
+                backupSchedule = .daily(hour: 2, minute: 0)
             case "daily":
-                backupSchedule = .daily
+                backupSchedule = .daily(hour: 2, minute: 0)
             case "weekly":
-                backupSchedule = .weekly
+                backupSchedule = .weekly(dayOfWeek: 1, hour: 2, minute: 0)
             case "monthly":
-                backupSchedule = .monthly
+                backupSchedule = .monthly(dayOfMonth: 1, hour: 2, minute: 0)
             default:
-                console.error("Invalid schedule: \(schedule)")
+                ConsoleUI.error("Invalid schedule: \(schedule)")
                 throw ValidationError("Invalid schedule")
             }
 
             // Create retention policy
             let retentionPolicy = BackupRetentionPolicy(
-                retentionPeriod: TimeInterval(retentionDays * 24 * 3600),
-                maxBackups: maxBackups,
-                complianceRetention: []
+                keepDaily: retentionDays,
+                keepWeekly: 4,
+                keepMonthly: 12,
+                keepYearly: 7,
+                maxBackups: maxBackups
             )
 
             // Create compression settings
-            let compressionSettings = BackupCompressionSettings(
-                enabled: compression,
-                algorithm: .gzip
+            let compressionSettings = CompressionSettings(
+                algorithm: .gzip,
+                enabled: compression
             )
 
             // Create encryption settings
             let encryptionSettings = BackupEncryptionSettings(
                 enabled: encryption,
-                algorithm: .aes256
+                algorithm: "AES-256-GCM"
             )
 
             // Create backup configuration
             let config = BackupConfiguration(
                 name: name,
+                description: "Backup configuration created via CLI",
                 sourceConfig: sourceConfig,
                 sourceBucket: sourceBucket,
                 destinationConfig: destConfig,
                 destinationBucket: destBucket,
-                prefix: prefix,
                 schedule: backupSchedule,
                 retentionPolicy: retentionPolicy,
                 compression: compressionSettings,
-                encryption: encryptionSettings,
-                isEnabled: true,
-                tags: [:]
+                encryption: encryptionSettings
             )
 
             // Get backup manager from dependency container
-            let container = DependencyContainer.shared
-            let backupManager = try container.resolve(BackupManager.self)
+            let backupManager = await MainActor.run { ServiceLocator.getShared().backupManager }
 
             try await backupManager.createConfiguration(config)
 
-            console.success("Backup configuration '\(name)' created successfully")
-            console.info("Configuration ID: \(config.id)")
+            ConsoleUI.success("Backup configuration '\(name)' created successfully")
+            ConsoleUI.info("Configuration ID: \(config.id)")
 
         } catch {
-            console.error("Failed to create backup configuration: \(error.localizedDescription)")
+            ConsoleUI.error("Failed to create backup configuration: \(error.localizedDescription)")
             throw error
         }
     }
@@ -169,44 +166,41 @@ struct ListBackupConfigs: ParsableCommand {
     var detailed: Bool = false
 
     func run() async throws {
-        let console = ConsoleUI()
-
         do {
-            let container = DependencyContainer.shared
-            let backupManager = try container.resolve(BackupManager.self)
+            let backupManager = await MainActor.run { ServiceLocator.getShared().backupManager }
 
             let configs = try await backupManager.listConfigurations()
 
             if configs.isEmpty {
-                console.info("No backup configurations found")
+                ConsoleUI.info("No backup configurations found")
                 return
             }
 
-            console.info("Backup Configurations:")
-            console.info(String(repeating: "=", count: 80))
+            ConsoleUI.info("Backup Configurations:")
+            ConsoleUI.info(String(repeating: "=", count: 80))
 
             for config in configs {
-                console.info("Name: \(config.name)")
-                console.info("ID: \(config.id)")
-                console.info("Source: \(config.sourceConfig.provider.rawValue)/\(config.sourceBucket)")
-                console.info("Destination: \(config.destinationConfig.provider.rawValue)/\(config.destinationBucket)")
-                console.info("Schedule: \(config.schedule.description)")
-                console.info("Enabled: \(config.isEnabled ? "Yes" : "No")")
+                ConsoleUI.info("Name: \(config.name)")
+                ConsoleUI.info("ID: \(config.id)")
+                ConsoleUI.info("Source: \(config.sourceConfig.provider.rawValue)/\(config.sourceBucket)")
+                ConsoleUI.info("Destination: \(config.destinationConfig.provider.rawValue)/\(config.destinationBucket)")
+                ConsoleUI.info("Schedule: \(config.schedule.description)")
+                ConsoleUI.info("Enabled: \(config.isEnabled ? "Yes" : "No")")
 
                 if detailed {
-                    console.info("Retention: \(config.retentionPolicy.retentionPeriod / (24*3600)) days, max \(config.retentionPolicy.maxBackups) backups")
-                    console.info("Compression: \(config.compression.enabled ? "Enabled" : "Disabled")")
-                    console.info("Encryption: \(config.encryption.enabled ? "Enabled" : "Disabled")")
+                    ConsoleUI.info("Retention: Daily=\(config.retentionPolicy.keepDaily), Weekly=\(config.retentionPolicy.keepWeekly), Monthly=\(config.retentionPolicy.keepMonthly), Max=\(config.retentionPolicy.maxBackups)")
+                    ConsoleUI.info("Compression: \(config.compression.enabled ? "Enabled" : "Disabled")")
+                    ConsoleUI.info("Encryption: \(config.encryption.enabled ? "Enabled" : "Disabled")")
                     if let prefix = config.prefix {
-                        console.info("Prefix: \(prefix)")
+                        ConsoleUI.info("Prefix: \(prefix)")
                     }
                 }
 
-                console.info("")
+                ConsoleUI.info("")
             }
 
         } catch {
-            console.error("Failed to list backup configurations: \(error.localizedDescription)")
+            ConsoleUI.error("Failed to list backup configurations: \(error.localizedDescription)")
             throw error
         }
     }
@@ -235,41 +229,44 @@ struct UpdateBackupConfig: ParsableCommand {
     var maxBackups: Int?
 
     func run() async throws {
-        let console = ConsoleUI()
-
         do {
-            let container = DependencyContainer.shared
-            let backupManager = try container.resolve(BackupManager.self)
+            let backupManager = await MainActor.run { ServiceLocator.getShared().backupManager }
 
-            guard var config = try await backupManager.listConfigurations()
+            guard let existingConfig = try await backupManager.listConfigurations()
                 .first(where: { $0.id == configId }) else {
-                console.error("Backup configuration not found: \(configId)")
+                ConsoleUI.error("Backup configuration not found: \(configId)")
                 throw ValidationError("Configuration not found")
             }
 
-            // Apply updates
-            if let name = name {
-                config.name = name
-            }
+            // Create updated configuration
+            let updatedConfig = BackupConfiguration(
+                id: existingConfig.id,
+                name: name ?? existingConfig.name,
+                description: existingConfig.description,
+                sourceConfig: existingConfig.sourceConfig,
+                sourceBucket: existingConfig.sourceBucket,
+                destinationConfig: existingConfig.destinationConfig,
+                destinationBucket: existingConfig.destinationBucket,
+                schedule: existingConfig.schedule,
+                retentionPolicy: BackupRetentionPolicy(
+                    keepDaily: retentionDays ?? existingConfig.retentionPolicy.keepDaily,
+                    keepWeekly: existingConfig.retentionPolicy.keepWeekly,
+                    keepMonthly: existingConfig.retentionPolicy.keepMonthly,
+                    keepYearly: existingConfig.retentionPolicy.keepYearly,
+                    maxBackups: maxBackups ?? existingConfig.retentionPolicy.maxBackups
+                ),
+                isEnabled: enabled ?? existingConfig.isEnabled,
+                prefix: existingConfig.prefix,
+                compression: existingConfig.compression,
+                encryption: existingConfig.encryption
+            )
 
-            if let enabled = enabled {
-                config.isEnabled = enabled
-            }
+            try await backupManager.updateConfiguration(updatedConfig)
 
-            if let retentionDays = retentionDays {
-                config.retentionPolicy.retentionPeriod = TimeInterval(retentionDays * 24 * 3600)
-            }
-
-            if let maxBackups = maxBackups {
-                config.retentionPolicy.maxBackups = maxBackups
-            }
-
-            try await backupManager.updateConfiguration(config)
-
-            console.success("Backup configuration updated successfully")
+            ConsoleUI.success("Backup configuration updated successfully")
 
         } catch {
-            console.error("Failed to update backup configuration: \(error.localizedDescription)")
+            ConsoleUI.error("Failed to update backup configuration: \(error.localizedDescription)")
             throw error
         }
     }
@@ -289,24 +286,21 @@ struct DeleteBackupConfig: ParsableCommand {
     var force: Bool = false
 
     func run() async throws {
-        let console = ConsoleUI()
-
         do {
             if !force {
-                console.warning("This will delete the backup configuration and all associated jobs.")
-                console.info("Use --force to skip this confirmation.")
+                ConsoleUI.warning("This will delete the backup configuration and all associated jobs.")
+                ConsoleUI.info("Use --force to skip this confirmation.")
                 return
             }
 
-            let container = DependencyContainer.shared
-            let backupManager = try container.resolve(BackupManager.self)
+            let backupManager = await MainActor.run { ServiceLocator.getShared().backupManager }
 
-            try await backupManager.deleteConfiguration(configId)
+            try await backupManager.deleteConfiguration(id: configId)
 
-            console.success("Backup configuration deleted successfully")
+            ConsoleUI.success("Backup configuration deleted successfully")
 
         } catch {
-            console.error("Failed to delete backup configuration: \(error.localizedDescription)")
+            ConsoleUI.error("Failed to delete backup configuration: \(error.localizedDescription)")
             throw error
         }
     }
@@ -323,19 +317,16 @@ struct StartBackup: ParsableCommand {
     var configId: String
 
     func run() async throws {
-        let console = ConsoleUI()
-
         do {
-            let container = DependencyContainer.shared
-            let backupManager = try container.resolve(BackupManager.self)
+            let backupManager = await MainActor.run { ServiceLocator.getShared().backupManager }
 
             let jobId = try await backupManager.startBackup(configurationId: configId)
 
-            console.success("Backup job started successfully")
-            console.info("Job ID: \(jobId)")
+            ConsoleUI.success("Backup job started successfully")
+            ConsoleUI.info("Job ID: \(jobId)")
 
         } catch {
-            console.error("Failed to start backup: \(error.localizedDescription)")
+            ConsoleUI.error("Failed to start backup: \(error.localizedDescription)")
             throw error
         }
     }
@@ -352,18 +343,15 @@ struct CancelBackup: ParsableCommand {
     var jobId: String
 
     func run() async throws {
-        let console = ConsoleUI()
-
         do {
-            let container = DependencyContainer.shared
-            let backupManager = try container.resolve(BackupManager.self)
+            let backupManager = await MainActor.run { ServiceLocator.getShared().backupManager }
 
             try await backupManager.cancelBackup(jobId: jobId)
 
-            console.success("Backup job cancelled successfully")
+            ConsoleUI.success("Backup job cancelled successfully")
 
         } catch {
-            console.error("Failed to cancel backup: \(error.localizedDescription)")
+            ConsoleUI.error("Failed to cancel backup: \(error.localizedDescription)")
             throw error
         }
     }
@@ -384,8 +372,7 @@ struct ListBackupJobs: ParsableCommand {
 
     func run() async throws {
         do {
-            let container = await MainActor.run { ServiceLocator.getShared() }
-            let backupManager = container.backupManager
+            let backupManager = await MainActor.run { ServiceLocator.getShared().backupManager }
 
             let jobs = try await backupManager.listJobs(for: configId)
 
@@ -397,10 +384,10 @@ struct ListBackupJobs: ParsableCommand {
             ConsoleUI.info("Backup Jobs for Configuration \(configId):")
             ConsoleUI.info(String(repeating: "=", count: 80))
 
-            for job in jobs.sorted(by: { $0.createdAt > $1.createdAt }) {
+            for job in jobs.sorted(by: { $0.startedAt > $1.startedAt }) {
                 ConsoleUI.info("Job ID: \(job.id)")
                 ConsoleUI.info("Status: \(job.status.rawValue)")
-                ConsoleUI.info("Created: \(job.createdAt.formatted())")
+                ConsoleUI.info("Started: \(job.startedAt.formatted())")
 
                 if let completedAt = job.completedAt {
                     ConsoleUI.info("Completed: \(completedAt.formatted())")
@@ -439,8 +426,7 @@ struct GetBackupStatus: ParsableCommand {
 
     func run() async throws {
         do {
-            let container = await MainActor.run { ServiceLocator.getShared() }
-            let backupManager = container.backupManager
+            let backupManager = await MainActor.run { ServiceLocator.getShared().backupManager }
 
             guard let job = try await backupManager.getJobStatus(jobId: jobId) else {
                 ConsoleUI.error("Backup job not found: \(jobId)")
@@ -451,7 +437,7 @@ struct GetBackupStatus: ParsableCommand {
             ConsoleUI.info("Job ID: \(job.id)")
             ConsoleUI.info("Configuration ID: \(job.configurationId)")
             ConsoleUI.info("Status: \(job.status.rawValue)")
-            ConsoleUI.info("Created: \(job.createdAt.formatted())")
+            ConsoleUI.info("Started: \(job.startedAt.formatted())")
 
             if let completedAt = job.completedAt {
                 ConsoleUI.info("Completed: \(completedAt.formatted())")
@@ -484,8 +470,7 @@ struct CleanupBackups: ParsableCommand {
 
     func run() async throws {
         do {
-            let container = await MainActor.run { ServiceLocator.getShared() }
-            let backupManager = container.backupManager
+            let backupManager = await MainActor.run { ServiceLocator.getShared().backupManager }
 
             try await backupManager.cleanupOldBackups()
 
@@ -516,8 +501,8 @@ struct InitiateRecovery: ParsableCommand {
 
     func run() async throws {
         do {
-            let container = await MainActor.run { ServiceLocator.getShared() }
-            let recoveryManager = container.disasterRecoveryManager
+            let backupManager = await MainActor.run { ServiceLocator.getShared().backupManager }
+            let recoveryManager = await MainActor.run { ServiceLocator.getShared().disasterRecoveryManager }
 
             let targetProviderEnum = targetProvider.flatMap { CloudProvider(rawValue: $0.lowercased()) }
 
@@ -582,8 +567,7 @@ struct TestRecovery: ParsableCommand {
 
     func run() async throws {
         do {
-            let container = await MainActor.run { ServiceLocator.getShared() }
-            let recoveryManager = container.disasterRecoveryManager
+            let recoveryManager = await MainActor.run { ServiceLocator.getShared().disasterRecoveryManager }
 
             let testResult = try await recoveryManager.testRecoveryReadiness(configurationId: configId)
 
@@ -599,7 +583,6 @@ struct TestRecovery: ParsableCommand {
             if let error = testResult.errorMessage {
                 ConsoleUI.error("Error: \(error)")
             }
-
         } catch {
             ConsoleUI.error("Failed to test disaster recovery: \(error.localizedDescription)")
             throw error
@@ -632,19 +615,17 @@ struct ValidateRecovery: ParsableCommand {
 
 // MARK: - Helper Functions
 
-private func getCloudConfig(for provider: CloudProvider, region: String) async throws -> CloudConfiguration {
+private func getCloudConfig(for provider: CloudProvider, region: String) async throws -> CloudConfig {
     // Get credentials from environment or keychain
     // This is a simplified version - in reality would be more sophisticated
-    let accessKeyId = ProcessInfo.processInfo.environment["AWS_ACCESS_KEY_ID"] ?? ""
-    let secretAccessKey = ProcessInfo.processInfo.environment["AWS_SECRET_ACCESS_KEY"] ?? ""
+    let accessKey = ProcessInfo.processInfo.environment["AWS_ACCESS_KEY_ID"] ?? ""
+    let secretKey = ProcessInfo.processInfo.environment["AWS_SECRET_ACCESS_KEY"] ?? ""
 
-    return CloudConfiguration(
+    return CloudConfig(
         provider: provider,
-        region: region,
-        accessKeyId: accessKeyId,
-        secretAccessKey: secretAccessKey,
-        sessionToken: nil,
-        endpoint: nil
+        accessKey: accessKey,
+        secretKey: secretKey,
+        region: region
     )
 }
 
