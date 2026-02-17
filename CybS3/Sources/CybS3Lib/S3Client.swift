@@ -150,224 +150,10 @@ public enum S3Error: Error, LocalizedError, Equatable {
     }
 }
 
-/// Helper to parse S3 XML error responses.
-struct S3ErrorParser {
-    /// Parses an S3 XML error response and returns an appropriate S3Error.
-    static func parse(data: Data, status: Int) -> S3Error {
-        guard !data.isEmpty else {
-            return .requestFailed(status: status, code: nil, message: "Empty response")
-        }
-        do {
-            let xml = try XMLDocument(data: data)
-            guard let root = xml.rootElement() else {
-                throw NSError(domain: "XML", code: 0, userInfo: nil)
-            }
-            let code = (try? root.nodes(forXPath: "Code").first?.stringValue) ?? (try? xml.nodes(forXPath: "//Error/Code").first?.stringValue)
-            let message = (try? root.nodes(forXPath: "Message").first?.stringValue) ?? (try? xml.nodes(forXPath: "//Error/Message").first?.stringValue)
-            
-            // Map common S3 error codes to specific errors
-            switch code {
-            case "AccessDenied":
-                return .accessDenied(resource: nil)
-            case "NoSuchBucket":
-                return .bucketNotFound
-            case "NoSuchKey":
-                return .objectNotFound
-            case "BucketNotEmpty":
-                return .bucketNotEmpty
-            case "InvalidAccessKeyId", "SignatureDoesNotMatch":
-                return .authenticationFailed
-            default:
-                return .requestFailed(status: status, code: code, message: message)
-            }
-        } catch {
-            // If we can't parse XML, return generic error with raw data
-            let rawMessage = String(data: data, encoding: .utf8)
-            return .requestFailed(status: status, code: nil, message: rawMessage)
-        }
-    }
-}
-
-// MARK: - AWS URI Encoding
-
-/// AWS S3 requires specific URI encoding rules that differ from standard URL encoding.
-/// Per AWS documentation, the following characters should NOT be encoded:
-/// - Unreserved characters: A-Z, a-z, 0-9, hyphen (-), underscore (_), period (.), tilde (~)
-/// All other characters must be percent-encoded.
-extension String {
-    /// Encodes a string for use in AWS S3 URI paths.
-    /// This follows AWS URI encoding rules where only unreserved characters are allowed.
-    func awsURIEncoded() -> String {
-        // AWS unreserved characters: A-Z a-z 0-9 - _ . ~
-        var allowed = CharacterSet()
-        allowed.insert(charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.~")
-        return self.addingPercentEncoding(withAllowedCharacters: allowed) ?? self
-    }
-    
-    /// Encodes a string for use in AWS S3 URI paths, preserving forward slashes.
-    /// Use this for object keys that contain path separators.
-    func awsPathEncoded() -> String {
-        // Split by /, encode each segment, rejoin with /
-        return self.split(separator: "/", omittingEmptySubsequences: false)
-            .map { String($0).awsURIEncoded() }
-            .joined(separator: "/")
-    }
-    
-    /// Encodes a string for use in AWS S3 query parameter values.
-    /// Forward slashes ARE encoded in query parameters.
-    func awsQueryEncoded() -> String {
-        return self.awsURIEncoded()
-    }
-}
-
-/// Represents an S3 endpoint configuration.
-public struct S3Endpoint: Sendable {
-    /// The hostname of the S3 service (e.g., `s3.amazonaws.com`).
-    public let host: String
-    /// The port number (usually 443 for HTTPS or 80 for HTTP).
-    public let port: Int
-    /// Whether to use SSL/HTTPS.
-    public let useSSL: Bool
-    
-    public init(host: String, port: Int, useSSL: Bool) {
-        self.host = host
-        self.port = port
-        self.useSSL = useSSL
-    }
-    
-    /// Returns "https" or "http" based on `useSSL`.
-    public var scheme: String { useSSL ? "https" : "http" }
-    
-    /// Constructs a full URL from the endpoint components.
-    public var url: URL? {
-        var components = URLComponents()
-        components.scheme = scheme
-        components.host = host
-        components.port = port
-        return components.url
-    }
-}
-
-// MARK: - AWS V4 Signer
-
-/// Helper struct to generate AWS Signature Version 4 headers.
-struct AWSV4Signer {
-    let accessKey: String
-    let secretKey: String
-    let region: String
-    let service: String = "s3"
-    
-    /// Signs an HTTP request according to AWS V4 signature requirements.
-    ///
-    /// - Parameters:
-    ///   - request: The HTTPClientRequest to modify with signature headers.
-    ///   - url: The full URL of the request.
-    ///   - method: The HTTP method (GET, PUT, etc.).
-    ///   - bodyHash: The SHA256 hash of the request body (hex string). Use "UNSIGNED-PAYLOAD" if payload signing is skipped.
-    ///   - headers: Additional headers to include in the signature.
-    ///   - now: The timestamp to use for signing (defaults to current Date).
-    func sign(
-        request: inout HTTPClientRequest,
-        url: URL,
-        method: String,
-        bodyHash: String,
-        headers: [String: String],
-        now: Date = Date()
-    ) {
-        let timestamp = iso8601DateFormatter.string(from: now)
-        let dateStamp = String(timestamp.prefix(8))
-        
-        // 1. Prepare Headers
-        request.headers.add(name: "Host", value: url.host ?? "")
-        request.headers.add(name: "x-amz-date", value: timestamp)
-        request.headers.add(name: "x-amz-content-sha256", value: bodyHash)
-        
-        for (k, v) in headers {
-            request.headers.add(name: k, value: v)
-        }
-        
-        // 2. Canonical Request
-        // Headers for signing need to be sorted and lowercase
-        var signedHeadersDict: [String: String] = [
-            "host": url.host ?? "",
-            "x-amz-date": timestamp,
-            "x-amz-content-sha256": bodyHash
-        ]
-        
-        for (k, v) in headers {
-            signedHeadersDict[k.lowercased()] = v.trimmingCharacters(in: .whitespaces)
-        }
-        
-        let signedHeadersKeys = signedHeadersDict.keys.sorted()
-        let signedHeadersString = signedHeadersKeys.joined(separator: ";")
-        
-        let canonicalHeaders = signedHeadersKeys.map { key in
-            "\(key):\(signedHeadersDict[key]!)"
-        }.joined(separator: "\n")
-        
-        // Canonical Query - must use AWS-specific encoding
-        // Use percentEncodedQuery to get the already-encoded query string,
-        // then parse and re-sort it (since it's already properly encoded)
-        let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
-        let canonicalQuery: String
-        if let encodedQuery = components?.percentEncodedQuery, !encodedQuery.isEmpty {
-            // Parse the already-encoded query string, sort by name, rejoin
-            let pairs = encodedQuery.split(separator: "&").map { String($0) }
-            let sortedPairs = pairs.sorted { pair1, pair2 in
-                let name1 = pair1.split(separator: "=", maxSplits: 1).first ?? ""
-                let name2 = pair2.split(separator: "=", maxSplits: 1).first ?? ""
-                return name1 < name2
-            }
-            canonicalQuery = sortedPairs.joined(separator: "&")
-        } else {
-            canonicalQuery = ""
-        }
-        
-        // Canonical Path - must use AWS-specific encoding
-        // url.path returns decoded path, we need to re-encode it for signing
-        let rawPath = url.path.isEmpty ? "/" : url.path
-        let canonicalPath = rawPath.awsPathEncoded()
-        
-        let canonicalRequest = [
-            method,
-            canonicalPath,
-            canonicalQuery,
-            canonicalHeaders + "\n",
-            signedHeadersString,
-            bodyHash
-        ].joined(separator: "\n")
-        
-        // 3. String to Sign
-        let credentialScope = "\(dateStamp)/\(region)/\(service)/aws4_request"
-        let stringToSign = [
-            "AWS4-HMAC-SHA256",
-            timestamp,
-            credentialScope,
-            SHA256.hash(data: Data(canonicalRequest.utf8)).hexString
-        ].joined(separator: "\n")
-        
-        // 4. Signature
-        let signingKey = getSignatureKey(secret: secretKey, dateStamp: dateStamp, region: region, service: service)
-        let signature = Data(HMAC<SHA256>.authenticationCode(for: Data(stringToSign.utf8), using: signingKey)).hexString
-        
-        let authHeader = "AWS4-HMAC-SHA256 Credential=\(accessKey)/\(credentialScope), SignedHeaders=\(signedHeadersString), Signature=\(signature)"
-        request.headers.add(name: "Authorization", value: authHeader)
-    }
-    
-    private func getSignatureKey(secret: String, dateStamp: String, region: String, service: String) -> SymmetricKey {
-        let kSecret = SymmetricKey(data: Data("AWS4\(secret)".utf8))
-        let kDate = HMAC<SHA256>.authenticationCode(for: Data(dateStamp.utf8), using: kSecret)
-        let kRegion = HMAC<SHA256>.authenticationCode(for: Data(region.utf8), using: SymmetricKey(data: kDate))
-        let kService = HMAC<SHA256>.authenticationCode(for: Data(service.utf8), using: SymmetricKey(data: kRegion))
-        let kSigning = HMAC<SHA256>.authenticationCode(for: Data("aws4_request".utf8), using: SymmetricKey(data: kService))
-        return SymmetricKey(data: kSigning)
-    }
-}
-
 // MARK: - S3 Client
 
 /// An actor that manages S3 interactions such as listing buckets, objects, and uploading/downloading files.
-/// It uses `AsyncHTTPClient` for networking and `AWSV4Signer` for authentication.
+/// It uses `AsyncHTTPClient` for networking and `S3Signer` for authentication.
 public actor S3Client: CloudClientProtocol {
     private let endpoint: S3Endpoint
     private let bucket: String?
@@ -397,7 +183,10 @@ public actor S3Client: CloudClientProtocol {
             configuration: httpConfig
         )
     }()
-    private let signer: AWSV4Signer
+    private let signer: S3Signer
+    private let requestBuilder: S3RequestBuilder
+    private let responseParser: S3ResponseParser
+    private let errorHandler: S3ErrorHandler
     private let logger: Logger
     private let configuration: Configuration
     private let sseKms: Bool
@@ -479,7 +268,10 @@ public actor S3Client: CloudClientProtocol {
         self.auditLogger = auditLogger
         self.sessionId = sessionId ?? UUID().uuidString
         
-        self.signer = AWSV4Signer(accessKey: accessKey, secretKey: secretKey, region: region)
+        self.signer = S3Signer(accessKey: accessKey, secretKey: secretKey, region: region)
+        self.requestBuilder = S3RequestBuilder(endpoint: endpoint, bucket: bucket, signer: self.signer)
+        self.responseParser = S3ResponseParser()
+        self.errorHandler = S3ErrorHandler()
         self.logger = Logger(label: "com.cybs3.client")
     }
     
@@ -528,88 +320,22 @@ public actor S3Client: CloudClientProtocol {
         )
     }
     
-    // MARK: - Request Building
-    
-    /// Builds and signs an HTTPClientRequest for S3.
-    private func buildRequest(
-        method: String,
-        path: String = "/",
-        queryItems: [URLQueryItem] = [],
-        headers: [String: String] = [:],
-        body: HTTPClientRequest.Body? = nil,
-        bodyHash: String = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-    ) async throws -> HTTPClientRequest {
-        guard let baseURL = endpoint.url else {
-            throw S3Error.invalidURL
-        }
-        
-        var urlComponents = URLComponents(url: baseURL, resolvingAgainstBaseURL: false)
-        if let bucket = bucket {
-            urlComponents?.host = "\(bucket).\(endpoint.host)"
-        }
-        
-        // Encode path using AWS-compatible encoding
-        // We use percentEncodedPath to ensure the URL contains properly encoded characters
-        let normalizedPath = path.hasPrefix("/") ? path : "/" + path
-        urlComponents?.percentEncodedPath = normalizedPath.awsPathEncoded()
-        
-        // Encode query items using AWS-compatible encoding
-        if !queryItems.isEmpty {
-            urlComponents?.percentEncodedQuery = queryItems
-                .map { item in
-                    let encodedName = item.name.awsQueryEncoded()
-                    let encodedValue = (item.value ?? "").awsQueryEncoded()
-                    return "\(encodedName)=\(encodedValue)"
-                }
-                .joined(separator: "&")
-        }
-        
-        guard let url = urlComponents?.url else {
-            throw S3Error.invalidURL
-        }
-        
-        var request = HTTPClientRequest(url: url.absoluteString)
-        request.method = HTTPMethod(rawValue: method)
-        if let body = body {
-            request.body = body
-        }
-        
-        signer.sign(
-            request: &request,
-            url: url,
-            method: method,
-            bodyHash: bodyHash,
-            headers: headers
-        )
-        
-        return request
-    }
-    
-    /// Helper to handle S3 error responses.
-    private func handleErrorResponse(_ response: HTTPClientResponse) async throws -> S3Error {
-        let body = try await response.body.collect(upTo: 1024 * 1024)
-        let data = Data(buffer: body)
-        return S3ErrorParser.parse(data: data, status: Int(response.status.code))
-    }
-    
     // MARK: - Public API
     
     /// Lists all buckets owned by the authenticated sender.
     /// - Returns: An array of bucket names.
     public func listBuckets() async throws -> [String] {
-        let request = try await buildRequest(method: "GET")
-        
+        let request = try await requestBuilder.buildRequest(method: "GET")
+
         let response = try await httpClient.execute(request, timeout: .seconds(30))
         guard response.status == HTTPResponseStatus.ok else {
-            throw try await handleErrorResponse(response)
+            throw try await errorHandler.handleErrorResponse(response)
         }
-        
+
         let body = try await response.body.collect(upTo: 10 * 1024 * 1024)
         let data = Data(buffer: body)
-        let xml = try XMLDocument(data: data)
-        
-        return try xml.nodes(forXPath: "//ListAllMyBucketsResult/Buckets/Bucket/Name")
-            .compactMap { $0.stringValue }
+
+        return try await responseParser.parseListBuckets(data: data)
     }
     
     /// Lists objects in the current bucket.
@@ -645,7 +371,7 @@ public actor S3Client: CloudClientProtocol {
                 queryItems.append(URLQueryItem(name: "continuation-token", value: token))
             }
             
-            let request = try await buildRequest(
+            let request = try await requestBuilder.buildRequest(
                 method: "GET",
                 path: "/",
                 queryItems: queryItems
@@ -653,59 +379,17 @@ public actor S3Client: CloudClientProtocol {
             
             let response = try await httpClient.execute(request, timeout: .seconds(30))
             guard response.status == HTTPResponseStatus.ok else {
-                throw try await handleErrorResponse(response)
+                throw try await errorHandler.handleErrorResponse(response)
             }
             
             let body = try await response.body.collect(upTo: 20 * 1024 * 1024)
             let data = Data(buffer: body)
-            let xml = try XMLDocument(data: data)
             
-            let objectNodes = try xml.nodes(forXPath: "//*[local-name()='Contents']")
-            for node in objectNodes {
-                guard let key = (try? node.nodes(forXPath: "*[local-name()='Key']").first)?.stringValue,
-                      let lastModified = (try? node.nodes(forXPath: "*[local-name()='LastModified']").first)?.stringValue,
-                      let sizeString = (try? node.nodes(forXPath: "*[local-name()='Size']").first)?.stringValue,
-                      let size = Int(sizeString) else {
-                    print("DEBUG: Failed to parse object fields")
-                    continue
-                }
-                
-                let etag = (try? node.nodes(forXPath: "*[local-name()='ETag']").first)?.stringValue
-                
-                objects.append(S3Object(
-                    key: key,
-                    size: size,
-                    lastModified: iso8601DateFormatter.date(from: lastModified) ?? Date(),
-                    isDirectory: false,
-                    etag: etag
-                ))
-            }
+            let parsedResponse = try await responseParser.parseListObjects(data: data)
+            objects.append(contentsOf: parsedResponse.objects)
             
-            let prefixNodes = try xml.nodes(forXPath: "//*[local-name()='CommonPrefixes']/*[local-name()='Prefix']")
-            for node in prefixNodes {
-                guard let prefix = node.stringValue else { continue }
-                if !objects.contains(where: { $0.key == prefix && $0.isDirectory }) {
-                    objects.append(S3Object(
-                        key: prefix,
-                        size: 0,
-                        lastModified: Date(),
-                        isDirectory: true,
-                        etag: nil
-                    ))
-                }
-            }
-            
-            if let truncatedNode = try? xml.nodes(forXPath: "//*[local-name()='IsTruncated']").first,
-               truncatedNode.stringValue?.lowercased() == "true" {
-                isTruncated = true
-                if let nextTokenNode = try? xml.nodes(forXPath: "//*[local-name()='NextContinuationToken']").first {
-                    continuationToken = nextTokenNode.stringValue
-                } else {
-                    isTruncated = false
-                }
-            } else {
-                isTruncated = false
-            }
+            isTruncated = parsedResponse.isTruncated
+            continuationToken = parsedResponse.continuationToken
         }
         return objects
     }
@@ -729,7 +413,7 @@ public actor S3Client: CloudClientProtocol {
         }
         
         let path = key.hasPrefix("/") ? key : "/" + key
-        let request = try await buildRequest(method: "GET", path: path)
+        let request = try await requestBuilder.buildRequest(method: "GET", path: path)
         
         do {
             let response = try await httpClient.execute(request, timeout: .seconds(30))
@@ -740,7 +424,7 @@ public actor S3Client: CloudClientProtocol {
                 if response.status == HTTPResponseStatus.forbidden {
                     throw S3Error.accessDenied(resource: key)
                 }
-                throw try await handleErrorResponse(response)
+                throw try await errorHandler.handleErrorResponse(response)
             }
 
             // Audit logging: operation complete
@@ -792,7 +476,7 @@ public actor S3Client: CloudClientProtocol {
         guard bucket != nil else { throw S3Error.bucketNotFound }
         
         let path = key.hasPrefix("/") ? key : "/" + key
-        let request = try await buildRequest(method: "HEAD", path: path)
+        let request = try await requestBuilder.buildRequest(method: "HEAD", path: path)
         
         let response = try await httpClient.execute(request, timeout: .seconds(30))
         
@@ -883,7 +567,7 @@ public actor S3Client: CloudClientProtocol {
         
         let body = HTTPClientRequest.Body.stream(stream, length: .known(length))
         
-        let request = try await buildRequest(
+        let request = try await requestBuilder.buildRequest(
             method: "PUT",
             path: path,
             headers: headers,
@@ -896,7 +580,7 @@ public actor S3Client: CloudClientProtocol {
             let timeoutSeconds = max(300, Int64(length / (1024 * 1024)) * 2) // ~2s per MB, min 5 min
             let response = try await httpClient.execute(request, timeout: .seconds(timeoutSeconds))
             guard response.status == HTTPResponseStatus.ok else {
-                 throw try await handleErrorResponse(response)
+                 throw try await errorHandler.handleErrorResponse(response)
             }
 
             // Audit logging: operation complete
@@ -933,14 +617,14 @@ public actor S3Client: CloudClientProtocol {
         guard bucket != nil else { throw S3Error.bucketNotFound }
         
         let path = key.hasPrefix("/") ? key : "/" + key
-        let request = try await buildRequest(method: "DELETE", path: path)
+        let request = try await requestBuilder.buildRequest(method: "DELETE", path: path)
         
         let response = try await httpClient.execute(request, timeout: .seconds(30))
         guard response.status == HTTPResponseStatus.noContent || response.status == HTTPResponseStatus.ok else {
             if response.status == HTTPResponseStatus.notFound {
                 throw S3Error.objectNotFound
             }
-            throw try await handleErrorResponse(response)
+            throw try await errorHandler.handleErrorResponse(response)
         }
     }
     
@@ -980,7 +664,7 @@ public actor S3Client: CloudClientProtocol {
             bodyHash = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855" // Empty hash
         }
         
-        let request = try await buildRequest(
+        let request = try await requestBuilder.buildRequest(
             method: "PUT",
             path: "/",
             queryItems: [],
@@ -1043,7 +727,7 @@ public actor S3Client: CloudClientProtocol {
         
         let bodyHash = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855" // Empty body hash
         
-        signer.sign(
+        await signer.sign(
             request: &request,
             url: url,
             method: "DELETE",
@@ -1073,7 +757,7 @@ public actor S3Client: CloudClientProtocol {
         let source = "/\(sourceBucket ?? currentBucket)/\(sourceKey)"
         let destPath = destKey.hasPrefix("/") ? destKey : "/" + destKey
         
-        let request = try await buildRequest(
+        let request = try await requestBuilder.buildRequest(
             method: "PUT",
             path: destPath,
             headers: ["x-amz-copy-source": source]
@@ -1082,7 +766,7 @@ public actor S3Client: CloudClientProtocol {
         let response = try await httpClient.execute(request, timeout: .seconds(300))
         
         guard response.status == .ok else {
-            throw try await handleErrorResponse(response)
+            throw try await errorHandler.handleErrorResponse(response)
         }
     }
     
@@ -1107,7 +791,7 @@ public actor S3Client: CloudClientProtocol {
         guard bucket != nil else { throw S3Error.bucketNotFound }
         
         let path = key.hasPrefix("/") ? key : "/" + key
-        let request = try await buildRequest(
+        let request = try await requestBuilder.buildRequest(
             method: "POST",
             path: path,
             queryItems: [URLQueryItem(name: "uploads", value: "")]
@@ -1116,7 +800,7 @@ public actor S3Client: CloudClientProtocol {
         let response = try await httpClient.execute(request, timeout: .seconds(30))
         
         guard response.status == .ok else {
-            throw try await handleErrorResponse(response)
+            throw try await errorHandler.handleErrorResponse(response)
         }
         
         let body = try await response.body.collect(upTo: 1024 * 1024)
@@ -1144,7 +828,7 @@ public actor S3Client: CloudClientProtocol {
         let path = key.hasPrefix("/") ? key : "/" + key
         let bodyHash = data.sha256()
         
-        let request = try await buildRequest(
+        let request = try await requestBuilder.buildRequest(
             method: "PUT",
             path: path,
             queryItems: [
@@ -1159,7 +843,7 @@ public actor S3Client: CloudClientProtocol {
         let response = try await httpClient.execute(request, timeout: .seconds(300))
         
         guard response.status == .ok else {
-            throw try await handleErrorResponse(response)
+            throw try await errorHandler.handleErrorResponse(response)
         }
         
         guard let etag = response.headers.first(name: "ETag") else {
@@ -1190,7 +874,7 @@ public actor S3Client: CloudClientProtocol {
         let bodyData = Data(xmlParts.utf8)
         let bodyHash = bodyData.sha256()
         
-        let request = try await buildRequest(
+        let request = try await requestBuilder.buildRequest(
             method: "POST",
             path: path,
             queryItems: [URLQueryItem(name: "uploadId", value: uploadId)],
@@ -1202,7 +886,7 @@ public actor S3Client: CloudClientProtocol {
         let response = try await httpClient.execute(request, timeout: .seconds(60))
         
         guard response.status == .ok else {
-            throw try await handleErrorResponse(response)
+            throw try await errorHandler.handleErrorResponse(response)
         }
     }
     
@@ -1216,7 +900,7 @@ public actor S3Client: CloudClientProtocol {
         
         let path = key.hasPrefix("/") ? key : "/" + key
         
-        let request = try await buildRequest(
+        let request = try await requestBuilder.buildRequest(
             method: "DELETE",
             path: path,
             queryItems: [URLQueryItem(name: "uploadId", value: uploadId)]
@@ -1225,7 +909,7 @@ public actor S3Client: CloudClientProtocol {
         let response = try await httpClient.execute(request, timeout: .seconds(30))
         
         guard response.status == .noContent || response.status == .ok else {
-            throw try await handleErrorResponse(response)
+            throw try await errorHandler.handleErrorResponse(response)
         }
     }
     
@@ -1447,45 +1131,6 @@ public struct S3Object: CustomStringConvertible, Equatable, Hashable, Sendable {
 }
 
 // MARK: - Extensions & Helpers
-
-// Thread-safe ISO8601 date formatter
-private enum ISO8601DateFormatterFactory {
-    // Thread-local storage for date formatters to avoid contention
-    private static let threadLocalFormatter = ThreadLocal<ISO8601DateFormatter>()
-    
-    static var formatter: ISO8601DateFormatter {
-        if let existing = threadLocalFormatter.value {
-            return existing
-        }
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withYear, .withMonth, .withDay, .withTime, .withTimeZone]
-        threadLocalFormatter.value = formatter
-        return formatter
-    }
-}
-
-// Simple thread-local storage implementation
-private final class ThreadLocal<T>: @unchecked Sendable {
-    private var storage: [ObjectIdentifier: T] = [:]
-    private let lock = CrossPlatformLock()
-    
-    var value: T? {
-        get {
-            lock.withLock {
-                storage[ObjectIdentifier(Thread.current)]
-            }
-        }
-        set {
-            lock.withLock {
-                storage[ObjectIdentifier(Thread.current)] = newValue
-            }
-        }
-    }
-}
-
-private var iso8601DateFormatter: ISO8601DateFormatter {
-    ISO8601DateFormatterFactory.formatter
-}
 
 extension Data {
     /// Computes the SHA256 hash of the data and returns it as a hex string.

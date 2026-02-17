@@ -102,6 +102,7 @@ struct Chaos: AsyncParsableCommand {
             abstract: "Clear all active chaos faults"
         )
 
+        @MainActor
         func run() async throws {
             ChaosEngine.clearAllFaults()
             print("🧹 All chaos faults cleared")

@@ -4,11 +4,11 @@ import Foundation
 public typealias Configuration = EncryptedConfig
 
 /// Configuration-related errors
-enum ConfigurationError: LocalizedError {
+public enum ConfigurationError: LocalizedError {
     case vaultAlreadyExists(String)
     case vaultNotFound(String)
 
-    var errorDescription: String? {
+    public var errorDescription: String? {
         switch self {
         case .vaultAlreadyExists(let name):
             return "Vault '\(name)' already exists"

@@ -9,47 +9,6 @@ import NIO
 import NIOCore
 import _NIOFileSystem
 
-// CRC32 extension for Data
-extension Data {
-    func crc32() -> UInt32 {
-        var crc: UInt32 = 0xFFFFFFFF
-        let table = crc32Table()
-
-        for byte in self {
-            let index = Int((crc ^ UInt32(byte)) & 0xFF)
-            crc = (crc >> 8) ^ table[index]
-        }
-
-        return crc ^ 0xFFFFFFFF
-    }
-
-    private func crc32Table() -> [UInt32] {
-        var table: [UInt32] = Array(repeating: 0, count: 256)
-        let polynomial: UInt32 = 0xEDB88320
-
-        for i in 0..<256 {
-            var crc = UInt32(i)
-            for _ in 0..<8 {
-                if crc & 1 != 0 {
-                    crc = (crc >> 1) ^ polynomial
-                } else {
-                    crc >>= 1
-                }
-            }
-            table[i] = crc
-        }
-
-        return table
-    }
-}
-
-// Digest to hex string extension
-extension Digest {
-    var hexString: String {
-        map { String(format: "%02x", $0) }.joined()
-    }
-}
-
 // Helper extension to match functionality
 extension FileSystem {
     func exists(at path: FilePath) async throws -> Bool {
@@ -94,6 +53,8 @@ actor FileSystemStorage: StorageBackend {
     let httpClient: HTTPClient?
     let testMode: Bool
     let kmsProvider: CybKMSClient?
+    let encryptionHandler: EncryptionHandler
+    let integrityChecker: IntegrityChecker
 
     /// Initializes a new file system storage instance.
     init(rootPath: String, metadataStore: MetadataStore? = nil, testMode: Bool = false, kmsProvider: CybKMSClient? = nil) async throws {
@@ -108,6 +69,10 @@ actor FileSystemStorage: StorageBackend {
 
         // Set KMS provider
         self.kmsProvider = kmsProvider
+
+        // Initialize handlers
+        self.encryptionHandler = EncryptionHandler(kmsProvider: kmsProvider)
+        self.integrityChecker = IntegrityChecker()
     }
 
     private func bucketPath(_ name: String) -> FilePath {
@@ -1141,130 +1106,42 @@ actor FileSystemStorage: StorageBackend {
         // Read the actual data
         let data = try await fileSystem.readAll(at: objectPath)
 
-        // If we have a checksum, verify it
-        if let algorithm = metadata.checksumAlgorithm, let storedChecksum = metadata.checksumValue {
-            let computedChecksum = try computeChecksum(data: data, algorithm: algorithm)
-            let isValid = computedChecksum == storedChecksum
-
-            return DataIntegrityResult(
-                isValid: isValid,
-                algorithm: algorithm,
-                computedChecksum: computedChecksum,
-                storedChecksum: storedChecksum,
-                bitrotDetected: !isValid,
-                canRepair: false // For now, no repair capability
-            )
-        }
-
-        // No checksum available
-        return DataIntegrityResult(
-            isValid: true, // Assume valid if no checksum
-            bitrotDetected: false,
-            canRepair: false
+        // Use integrity checker to verify data
+        return try await integrityChecker.verifyDataIntegrity(
+            data: data,
+            storedAlgorithm: metadata.checksumAlgorithm,
+            storedChecksum: metadata.checksumValue
         )
     }
 
     /// Repairs data corruption if possible (for erasure coding or bitrot recovery).
     func repairDataCorruption(bucket: String, key: String, versionId: String?) async throws -> Bool {
-        // For now, return false as we don't have erasure coding implemented
-        // This would be where erasure coding recovery would happen
-        return false
-    }
+        let objectPath = getObjectPath(bucket: bucket, key: key, versionId: versionId)
 
-    /// Computes checksum for data using specified algorithm.
-    private func computeChecksum(data: Data, algorithm: ChecksumAlgorithm) throws -> String {
-        switch algorithm {
-        case .crc32:
-            // Simple CRC32 implementation
-            return String(format: "%08x", data.crc32())
-        case .crc32c:
-            // CRC32C - for now use same as CRC32
-            return String(format: "%08x", data.crc32())
-        case .sha1:
-            return Insecure.SHA1.hash(data: data).hexString
-        case .sha256:
-            return SHA256.hash(data: data).hexString
+        // Read the actual data
+        let data = try await fileSystem.readAll(at: objectPath)
+
+        // Use integrity checker to attempt repair
+        let (repaired, repairedData) = try await integrityChecker.repairDataCorruption(data: data)
+
+        if repaired {
+            // Write back the repaired data
+            try await fileSystem.writeFile(at: objectPath, bytes: ByteBuffer(data: repairedData))
         }
+
+        return repaired
     }
 
     // MARK: - Server-Side Encryption
 
     /// Encrypts data using the specified server-side encryption configuration.
     func encryptData(_ data: Data, with config: ServerSideEncryptionConfig) async throws -> (encryptedData: Data, key: Data?, iv: Data?) {
-        switch config.algorithm {
-        case .aes256:
-            // Generate a random 256-bit key and IV for AES encryption
-            let key = SymmetricKey(size: .bits256)
-            let iv = AES.GCM.Nonce()
-
-            let sealedBox = try AES.GCM.seal(data, using: key, nonce: iv)
-            let combinedData = sealedBox.combined!
-
-            return (encryptedData: combinedData, key: key.withUnsafeBytes { Data($0) }, iv: iv.withUnsafeBytes { Data($0) })
-
-        case .awsKms:
-            // For AWS KMS encryption, we'd need to call AWS KMS API
-            // For now, fall back to AES256 (this should be replaced with actual AWS SDK calls)
-            let key = SymmetricKey(size: .bits256)
-            let iv = AES.GCM.Nonce()
-
-            let sealedBox = try AES.GCM.seal(data, using: key, nonce: iv)
-            let combinedData = sealedBox.combined!
-
-            return (encryptedData: combinedData, key: key.withUnsafeBytes { Data($0) }, iv: iv.withUnsafeBytes { Data($0) })
-
-        case .cybKms:
-            guard let kmsProvider = kmsProvider else {
-                throw S3Error.invalidEncryption
-            }
-            guard let keyId = config.kmsKeyId else {
-                throw S3Error.invalidEncryption
-            }
-
-            // Convert encryption context string to dictionary if needed
-            var context: [String: String]? = nil
-            if let contextStr = config.kmsEncryptionContext {
-                context = ["encryption-context": contextStr]
-            }
-
-            let result = try await kmsProvider.encrypt(plaintext: data, keyId: keyId, encryptionContext: context)
-
-            // Return ciphertext with KMS metadata
-            return (encryptedData: result.ciphertextBlob, key: nil, iv: nil)
-        }
+        return try await encryptionHandler.encryptData(data, with: config)
     }
 
     /// Decrypts data using the specified server-side encryption configuration.
     func decryptData(_ encryptedData: Data, with config: ServerSideEncryptionConfig, key: Data?, iv: Data?) async throws -> Data {
-        switch config.algorithm {
-        case .aes256, .awsKms:
-            guard let key = key, let iv = iv else {
-                throw S3Error.invalidEncryption
-            }
-
-            let symmetricKey = SymmetricKey(data: key)
-            let _ = try AES.GCM.Nonce(data: iv)
-
-            let sealedBox = try AES.GCM.SealedBox(combined: encryptedData)
-            let decryptedData = try AES.GCM.open(sealedBox, using: symmetricKey)
-
-            return decryptedData
-
-        case .cybKms:
-            guard let kmsProvider = kmsProvider else {
-                throw S3Error.invalidEncryption
-            }
-            
-            // Convert encryption context string to dictionary if needed
-            var context: [String: String]? = nil
-            if let contextStr = config.kmsEncryptionContext {
-                context = ["encryption-context": contextStr]
-            }
-
-            let result = try await kmsProvider.decrypt(ciphertextBlob: encryptedData, encryptionContext: context)
-
-            return result.plaintext
-        }
+        return try await encryptionHandler.decryptData(encryptedData, with: config, key: key, iv: iv)
     }
 
     // MARK: - Cross-Region Replication

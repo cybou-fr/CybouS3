@@ -5,10 +5,10 @@ import PackageDescription
 
 let package = Package(
     name: "CybS3",
-    // Supports macOS 12.0+, Linux, and iOS 15.0+
+    // Supports macOS 14.0+, Linux, and iOS 17.0+ (updated for CybKMS compatibility)
     platforms: [
-        .macOS(.v12),
-        .iOS(.v15)
+        .macOS(.v14),
+        .iOS(.v17)
     ],
     products: [
         .executable(name: "cybs3", targets: ["CybS3"]),

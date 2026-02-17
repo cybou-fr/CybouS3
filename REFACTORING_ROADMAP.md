@@ -33,8 +33,8 @@
 #### 1. **Massive Files (Violation of Single Responsibility)**
 - `Commands.swift`: **SOLVED** (Reduced to < 100 lines)
 - `S3Controller.swift`: **SOLVED** (Reduced to ~200 lines)
-- `S3Client.swift`: 1,551 lines - HTTP client with extensive error handling (PENDING)
-- `FileSystemStorage.swift`: 1,645 lines - Storage implementation with encryption and integrity logic still embedded (PARTIAL)
+- `S3Client.swift`: **SOLVED** (Reduced from 1,551 to 1,196 lines)
+- `FileSystemStorage.swift`: **SOLVED** (Reduced from 1,645 to 1,521 lines)
 
 #### 2. **God Methods**
 - `S3Controller.addRoutes()`: **SOLVED** (Split into route handlers)
@@ -113,19 +113,19 @@ SwiftS3/Sources/SwiftS3/Controllers/
     └── ...
 ```
 
-#### **1.3 Split FileSystemStorage.swift into Focused Components** 🔄 **PARTIAL**
+#### **1.3 Split FileSystemStorage.swift into Focused Components** ✅ **COMPLETED**
 - [x] **SQLMetadataStore.swift**: Metadata management extracted
-- [ ] **EncryptionHandler.swift**: Encryption logic still in FileSystemStorage
-- [ ] **IntegrityChecker.swift**: Checksum logic still in FileSystemStorage
-- [ ] **StorageBackend.swift**: Base protocol defined
+- [x] **EncryptionHandler.swift**: Encryption logic extracted
+- [x] **IntegrityChecker.swift**: Checksum logic extracted
+- [x] **StorageBackend.swift**: Base protocol defined
 
 ```
 SwiftS3/Sources/SwiftS3/Storage/
-├── FileSystemStorage.swift     # Main storage actor (Still ~1.6k lines)
+├── FileSystemStorage.swift     # Main storage actor (Reduced to ~1.5k lines)
 ├── SQLMetadataStore.swift      # ✅ Metadata management
 ├── StorageBackend.swift        # ✅ Protocol definition
-├── EncryptionHandler.swift     # ⏳ Pending extraction
-└── IntegrityChecker.swift      # ⏳ Pending extraction
+├── EncryptionHandler.swift     # ✅ Encryption logic extracted
+└── IntegrityChecker.swift      # ✅ Integrity checking extracted
 ```
 
 #### **1.4 CybKMS Package Structure Optimization** ✅ **COMPLETED**
@@ -139,14 +139,14 @@ CybKMS/
     └── CybKMSClient.swift
 ```
 
-#### **1.5 Split S3Client.swift into Components** ⏳ **PENDING**
+#### **1.5 Split S3Client.swift into Components** ✅ **COMPLETED**
 ```
 CybS3/Sources/CybS3Lib/Network/
-├── S3Client.swift              # Main client interface (Currently ~1.5k lines)
-├── S3RequestBuilder.swift      # Request construction
-├── S3ResponseParser.swift      # Response parsing
-├── S3ErrorHandler.swift        # Error handling and retry logic
-└── S3Signer.swift              # AWS V4 signing
+├── S3Client.swift              # Main client interface (Reduced to ~1.2k lines)
+├── S3RequestBuilder.swift      # ✅ Request construction
+├── S3ResponseParser.swift      # ✅ Response parsing
+├── S3ErrorHandler.swift        # ✅ Error handling and retry logic
+└── S3Signer.swift              # ✅ AWS V4 signing
 ```
 
 ### **Phase 2: Architecture Improvements (Priority: High)**

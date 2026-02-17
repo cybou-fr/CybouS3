@@ -51,15 +51,15 @@ public struct DeleteBucketOutput {
     let vaultName: String?
 }
 
-struct ListBucketsInput {
-    let vaultName: String?
-    let json: Bool
+public struct ListBucketsInput {
+    public let vaultName: String?
+    public let json: Bool
 }
 
-struct ListBucketsOutput {
-    let buckets: [String]
-    let vaultName: String?
-    let json: Bool
+public struct ListBucketsOutput {
+    public let buckets: [String]
+    public let vaultName: String?
+    public let json: Bool
 }
 
 /// Bucket operation handlers
@@ -96,13 +96,13 @@ class DeleteBucketHandler {
     }
 }
 
-class ListBucketsHandler {
+public class ListBucketsHandler {
     typealias Input = ListBucketsInput
     typealias Output = ListBucketsOutput
 
     private let service: BucketOperationsServiceProtocol
 
-    init(service: BucketOperationsServiceProtocol) {
+    public init(service: BucketOperationsServiceProtocol) {
         self.service = service
     }
 
