@@ -23,17 +23,18 @@ SwiftS3 is a lightweight, S3-compatible object storage server written in Swift. 
 
 ### Enterprise Features
 
-- **Server-Side Encryption (SSE-KMS)**: AES256 and AWS KMS-compatible encryption for data at rest.
-- **VPC-Only Access**: Restrict bucket access to specific IP ranges for enhanced security.
-- **Advanced Auditing**: Comprehensive audit logging with compliance reporting and security monitoring.
-- **Analytics & Insights**: Storage analytics, access analyzer, inventory reports, and performance metrics.
-- **Batch Operations**: Large-scale batch operations on objects (like AWS S3 Batch).
-- **Event Notifications**: S3-compatible event notifications for object operations, including webhook support and message queue integration.
-- **Identity Federation**: LDAP/Active Directory integration for enterprise authentication.
-- **Cross-Region Replication**: Automatic replication of objects across multiple regions.
-- **Object Lock**: WORM (Write Once Read Many) compliance with retention periods and legal holds.
-- **S3 Select**: SQL queries directly on objects without downloading.
-- **Multipart Upload Copy**: Copy parts from existing objects during multipart uploads.
+- **Server-Side Encryption (SSE-KMS)**: AES256 and CybKMS-compatible encryption for data at rest
+- **CybKMS Integration**: Connect to standalone CybKMS server for key management
+- **VPC-Only Access**: Restrict bucket access to specific IP ranges for enhanced security
+- **Advanced Auditing**: Comprehensive audit logging with compliance reporting and security monitoring
+- **Analytics & Insights**: Storage analytics, access analyzer, inventory reports, and performance metrics
+- **Batch Operations**: Large-scale batch operations on objects (like AWS S3 Batch)
+- **Event Notifications**: S3-compatible event notifications for object operations, including webhook support and message queue integration
+- **Identity Federation**: LDAP/Active Directory integration for enterprise authentication
+- **Cross-Region Replication**: Automatic replication of objects across multiple regions
+- **Object Lock**: WORM (Write Once Read Many) compliance with retention periods and legal holds
+- **S3 Select**: SQL queries directly on objects without downloading
+- **Multipart Upload Copy**: Copy parts from existing objects during multipart uploads
 
 ## Architecture
 

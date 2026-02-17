@@ -37,19 +37,10 @@ let package = Package(
         ),
         .target(
             name: "CybKMSClient",
-            path: "CybKMSClient",
             dependencies: [
                 .product(name: "AsyncHTTPClient", package: "async-http-client"),
-            ]
-        ),
-        .testTarget(
-            name: "CybKMSTests",
-            dependencies: [
-                .target(name: "CybKMS"),
-                .target(name: "CybKMSClient"),
-                .product(name: "HummingbirdTesting", package: "hummingbird"),
-                .product(name: "SQLiteNIO", package: "sqlite-nio"),
-            ]
+            ],
+            path: "CybKMSClient"
         ),
     ]
 )

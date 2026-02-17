@@ -27,6 +27,7 @@ CybouS3 is the first unified ecosystem that seamlessly integrates:
 
 - **CybS3**: Advanced CLI client with zero-knowledge, client-side AES-256-GCM encryption
 - **SwiftS3**: High-performance S3-compatible server with enterprise features
+- **CybKMS**: Standalone AWS KMS API-compatible key management service (pure Swift)
 
 This combination delivers **double encryption** (client + server), unified management, and comprehensive testing - all while maintaining the zero-trust security model.
 
@@ -34,8 +35,9 @@ This combination delivers **double encryption** (client + server), unified manag
 
 ### 🔐 Security First
 - **Client-side encryption** with BIP39 mnemonic keys
-- **Server-side encryption** (SSE-KMS) support - *Implemented Q2 2026*
-- **Double encryption** capabilities (client + server) - *Framework ready*
+- **Server-side encryption** (SSE-KMS) support with CybKMS - *✅ Implemented Q2 2026*
+- **CybKMS**: Standalone AWS KMS API-compatible key management service (pure Swift) - *✅ Implemented Q2 2026*
+- **Double encryption** capabilities (client + server) - *✅ Framework ready*
 - **Zero-knowledge architecture** - your data is never exposed
 - **Key rotation** without re-encryption
 - **Secure key storage** (Keychain/platform-specific)
@@ -72,6 +74,7 @@ This combination delivers **double encryption** (client + server), unified manag
 ### 🔧 Developer Experience
 - **Unified CLI** for both client and server management - *Enhanced Q2 2026*
 - **Easy local development** setup with `cybs3 vaults local`
+- **Three-service ecosystem**: CybS3 CLI, SwiftS3 server, CybKMS key management
 - **Comprehensive testing** suite (integration, security, performance) - *Enhanced Q2 2026*
 - **Cross-platform** support (macOS, Linux, Windows)
 - **SwiftS3 server management** through CybS3 CLI - *Implemented Q2 2026*
@@ -89,9 +92,10 @@ This combination delivers **double encryption** (client + server), unified manag
 git clone https://github.com/cybou-fr/CybouS3.git
 cd CybouS3
 
-# Build both components
+# Build all components
 cd CybS3 && swift build -c release
 cd ../SwiftS3 && swift build -c release
+cd ../CybKMS && swift build -c release
 
 # Install CybS3 CLI (adjust path as needed)
 cd ../CybS3 && cp .build/x86_64-unknown-linux-gnu/release/cybs3 /usr/local/bin/
@@ -100,20 +104,29 @@ cd ../CybS3 && cp .build/x86_64-unknown-linux-gnu/release/cybs3 /usr/local/bin/
 ### Basic Usage
 
 ```bash
-# Start SwiftS3 server
-cybs3 server start
+# Start CybKMS key management service (port 8081)
+cd CybKMS && swift run CybKMS --port 8081 &
 
-# Check server status and metrics
-cybs3 server status
-cybs3 server metrics
+# Start SwiftS3 server with CybKMS integration
+cd ../SwiftS3 && swift run SwiftS3 server --cyb-kms-endpoint http://127.0.0.1:8081 &
 
-# View server logs
-cybs3 server logs --follow
+# Use CybS3 CLI for client operations
+cd ../CybS3 && swift run cybs3 vaults create my-vault
+swift run cybs3 backup /path/to/data --vault my-vault
+```
 
-# Sync vault credentials to server
-cybs3 server auth sync --vault my-vault
+### Ecosystem Architecture
 
-# Create encrypted vault for local development
+```
+┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│   CybS3     │    │  SwiftS3    │    │   CybKMS    │
+│    CLI      │◄──►│   Server    │◄──►│    KMS      │
+│             │    │             │    │   Service   │
+│ • Backup    │    │ • S3 API    │    │ • Key Mgmt  │
+│ • Restore   │    │ • SSE-KMS   │    │ • Encrypt   │
+│ • Sync      │    │ • Storage   │    │ • Decrypt   │
+└─────────────┘    └─────────────┘    └─────────────┘
+```
 cybs3 vaults local --name dev
 
 # Use CybS3 with local server
