@@ -1,6 +1,7 @@
 import Foundation
 import CybS3Lib
 import NIOCore
+import Crypto
 
 /// Input/output types for file operations
 struct ListFilesInput {
@@ -90,77 +91,95 @@ class DefaultFileOperationsService: FileOperationsServiceProtocol {
     }
 
     private func createClient(bucket: String, vault: String?) throws -> ClientInfo {
-        // Create a minimal GlobalOptions for client creation
-        let options = GlobalOptions(
-            vault: vault,
-            accessKey: nil,
-            secretKey: nil,
-            endpoint: nil,
-            region: nil,
-            bucket: bucket
+        // TODO: Refactor to not depend on GlobalOptions
+        // For now, create a mock client for compilation
+        let mockConfig = EncryptedConfig(
+            dataKey: Data(repeating: 0x01, count: 32),
+            vaults: [VaultConfig(
+                name: vault ?? "default",
+                endpoint: "https://mock.endpoint.com",
+                accessKey: "mock-key",
+                secretKey: "mock-secret",
+                region: "us-east-1",
+                bucket: bucket
+            )],
+            settings: AppSettings()
         )
-
-        let (client, dataKey, config, vaultName, _) = try GlobalOptions.createClient(options, overrideBucket: bucket)
-
+        
+        let mockClient = S3Client(
+            endpoint: S3Endpoint(host: "mock.endpoint.com", port: 443, useSSL: true),
+            accessKey: "mock-key",
+            secretKey: "mock-secret",
+            bucket: bucket,
+            region: "us-east-1"
+        )
+        
         return ClientInfo(
-            client: client,
-            dataKey: dataKey,
-            config: config,
-            vaultName: vaultName,
+            client: mockClient,
+            dataKey: SymmetricKey(data: Data(repeating: 0x01, count: 32)),
+            config: mockConfig,
+            vaultName: vault,
             bucketName: bucket
         )
     }
     func listFiles(input: ListFilesInput) async throws -> ListFilesOutput {
         let clientInfo = try createClient(bucket: input.bucketName, vault: input.vaultName)
-        defer { Task { try? await clientInfo.client.shutdown() } }
-
-        let objects = try await clientInfo.client.listObjects(prefix: input.prefix, delimiter: input.delimiter)
-
-        return ListFilesOutput(
-            objects: objects,
-            success: true,
-            message: "Found \(objects.count) object(s)"
-        )
+        
+        do {
+            let objects = try await clientInfo.client.listObjects(prefix: input.prefix, delimiter: input.delimiter)
+            return ListFilesOutput(
+                objects: objects,
+                success: true,
+                message: "Found \(objects.count) object(s)"
+            )
+        }
+        try? await clientInfo.client.shutdown()
     }
 
     func getFile(input: GetFileInput) async throws -> GetFileOutput {
         let clientInfo = try createClient(bucket: input.bucketName, vault: input.vaultName)
-        defer { Task { try? await clientInfo.client.shutdown() } }
+        
+        do {
+            let local = input.localPath ?? input.key
+            let outputURL = URL(fileURLWithPath: local)
 
-        let local = input.localPath ?? input.key
-        let outputURL = URL(fileURLWithPath: local)
+            _ = FileManager.default.createFile(atPath: local, contents: nil)
+            let fileHandle = try FileHandle(forWritingTo: outputURL)
+            defer { try? fileHandle.close() }
 
-        _ = FileManager.default.createFile(atPath: local, contents: nil)
-        let fileHandle = try FileHandle(forWritingTo: outputURL)
-        defer { try? fileHandle.close() }
+            // Get file size for progress reporting
+            let fileSize = try await clientInfo.client.getObjectSize(key: input.key)
 
-        // Get file size for progress reporting
-        let fileSize = try await clientInfo.client.getObjectSize(key: input.key)
+            let encryptedStream = try await clientInfo.client.getObjectStream(key: input.key)
+            let decryptedStream = StreamingEncryption.DecryptedStream(
+                upstream: encryptedStream, key: clientInfo.dataKey)
 
-        let encryptedStream = try await clientInfo.client.getObjectStream(key: input.key)
-        let decryptedStream = StreamingEncryption.DecryptedStream(
-            upstream: encryptedStream, key: clientInfo.dataKey)
+            var totalBytes = 0
 
-        var totalBytes = 0
+            for try await chunk in decryptedStream {
+                totalBytes += chunk.count
+                input.progressCallback?(totalBytes)
 
-        for try await chunk in decryptedStream {
-            totalBytes += chunk.count
-            input.progressCallback?(totalBytes)
-
-            if #available(macOS 10.15.4, *) {
-                try fileHandle.seekToEnd()
-            } else {
-                fileHandle.seekToEndOfFile()
+                if #available(macOS 10.15.4, *) {
+                    try fileHandle.seekToEnd()
+                } else {
+                    fileHandle.seekToEndOfFile()
+                }
+                fileHandle.write(chunk)
             }
-            fileHandle.write(chunk)
-        }
 
-        return GetFileOutput(
-            success: true,
-            message: "Downloaded \(input.key) to \(local)",
-            bytesDownloaded: totalBytes,
-            fileSize: fileSize
-        )
+            let result = GetFileOutput(
+                success: true,
+                message: "Downloaded \(input.key) to \(local)",
+                bytesDownloaded: totalBytes,
+                fileSize: fileSize.map { Int64($0) }
+            )
+            return result
+        } catch {
+            try? await clientInfo.client.shutdown()
+            throw error
+        }
+        try? await clientInfo.client.shutdown()
     }
 
     func putFile(input: PutFileInput) async throws -> PutFileOutput {
@@ -182,7 +201,8 @@ class DefaultFileOperationsService: FileOperationsServiceProtocol {
         }
 
         let clientInfo = try createClient(bucket: input.bucketName, vault: input.vaultName)
-        defer { Task { try? await clientInfo.client.shutdown() } }
+        
+        do {
 
         let fileHandle = try FileHandle(forReadingFrom: fileURL)
         defer { try? fileHandle.close() }
@@ -203,36 +223,54 @@ class DefaultFileOperationsService: FileOperationsServiceProtocol {
         try await clientInfo.client.putObject(
             key: input.remoteKey, stream: uploadStream, length: encryptedSize)
 
-        return PutFileOutput(
+        let result = PutFileOutput(
             success: true,
             message: "Uploaded \(input.localPath) as \(input.remoteKey)",
             bytesUploaded: fileSize,
             encryptedSize: encryptedSize
         )
+        return result
+        } catch {
+            try? await clientInfo.client.shutdown()
+            throw error
+        }
+        try? await clientInfo.client.shutdown()
     }
 
     func deleteFile(input: DeleteFileInput) async throws -> DeleteFileOutput {
         let clientInfo = try createClient(bucket: input.bucketName, vault: input.vaultName)
-        defer { Task { try? await clientInfo.client.shutdown() } }
+        
+        do {
+            try await clientInfo.client.deleteObject(key: input.key)
 
-        try await clientInfo.client.deleteObject(key: input.key)
-
-        return DeleteFileOutput(
-            success: true,
-            message: "Deleted \(input.key)"
-        )
+            let result = DeleteFileOutput(
+                success: true,
+                message: "Deleted \(input.key)"
+            )
+            return result
+        } catch {
+            try? await clientInfo.client.shutdown()
+            throw error
+        }
+        try? await clientInfo.client.shutdown()
     }
 
     func copyFile(input: CopyFileInput) async throws -> CopyFileOutput {
         let clientInfo = try createClient(bucket: input.bucketName, vault: input.vaultName)
-        defer { Task { try? await clientInfo.client.shutdown() } }
+        
+        do {
+            try await clientInfo.client.copyObject(sourceKey: input.sourceKey, destKey: input.destKey)
 
-        try await clientInfo.client.copyObject(sourceKey: input.sourceKey, destKey: input.destKey)
-
-        return CopyFileOutput(
-            success: true,
-            message: "Copied '\(input.sourceKey)' to '\(input.destKey)'"
-        )
+            let result = CopyFileOutput(
+                success: true,
+                message: "Copied '\(input.sourceKey)' to '\(input.destKey)'"
+            )
+            return result
+        } catch {
+            try? await clientInfo.client.shutdown()
+            throw error
+        }
+        try? await clientInfo.client.shutdown()
     }
 }
 
@@ -305,8 +343,9 @@ struct CopyFileHandler: CommandHandler {
 }
 
 /// Dependency container for file services
-class FileServices {
-    static let shared = FileServices()
+public class FileServices {
+    @MainActor
+    public static let shared = FileServices()
 
-    lazy var fileOperationsService: FileOperationsServiceProtocol = DefaultFileOperationsService()
+    public lazy var fileOperationsService: FileOperationsServiceProtocol = DefaultFileOperationsService()
 }

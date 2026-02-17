@@ -2,14 +2,14 @@ import CybS3Lib
 import Foundation
 
 /// Protocol for bucket operations service
-protocol BucketOperationsServiceProtocol {
+public protocol BucketOperationsServiceProtocol {
     func createBucket(name: String) async throws
     func deleteBucket(name: String) async throws
     func listBuckets() async throws -> [String]
 }
 
 /// Default implementation of bucket operations service
-class DefaultBucketOperationsService: BucketOperationsServiceProtocol {
+public class DefaultBucketOperationsService: BucketOperationsServiceProtocol {
     private let client: S3Client
 
     init(client: S3Client) {
@@ -31,23 +31,23 @@ class DefaultBucketOperationsService: BucketOperationsServiceProtocol {
 
 /// Input/Output types for bucket handlers
 
-struct CreateBucketInput {
-    let bucketName: String
-    let vaultName: String?
+public struct CreateBucketInput {
+    public let bucketName: String
+    public let vaultName: String?
 }
 
-struct CreateBucketOutput {
-    let bucketName: String
-    let vaultName: String?
+public struct CreateBucketOutput {
+    public let bucketName: String
+    public let vaultName: String?
 }
 
-struct DeleteBucketInput {
-    let bucketName: String
-    let vaultName: String?
-    let force: Bool
+public struct DeleteBucketInput {
+    public let bucketName: String
+    public let vaultName: String?
+    public let force: Bool
 }
 
-struct DeleteBucketOutput {
+public struct DeleteBucketOutput {
     let bucketName: String
     let vaultName: String?
 }

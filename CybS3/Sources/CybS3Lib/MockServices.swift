@@ -24,12 +24,61 @@ class MockConfigurationService: ConfigurationServiceProtocol {
     var configResult: Result<ConfigOutput, Error> = .success(ConfigOutput(
         success: true,
         message: "Configuration retrieved",
-        vaults: ["test-vault"],
-        currentVault: "test-vault",
-        accessKey: "test-key",
-        secretKey: "test-secret"
+        config: Configuration(
+            dataKey: Data(repeating: 0x01, count: 32),
+            vaults: [VaultConfig(
+                name: "test-vault",
+                endpoint: "https://test.endpoint.com",
+                accessKey: "test-key",
+                secretKey: "test-secret",
+                region: "us-east-1"
+            )],
+            settings: AppSettings()
+        )
     ))
 
+    var updateResult: Result<ConfigOutput, Error> = .success(ConfigOutput(
+        success: true,
+        message: "Configuration updated",
+        config: nil
+    ))
+
+    var resetResult: Result<Void, Error> = .success(())
+    var createVaultResult: Result<Void, Error> = .success(())
+    var setActiveVaultResult: Result<Void, Error> = .success(())
+
+    func getConfig(mnemonic: String) async throws -> Configuration {
+        // Mock implementation - return a basic configuration
+        return Configuration(
+            dataKey: Data(repeating: 0x01, count: 32), // Mock 32-byte key
+            vaults: [VaultConfig(
+                name: "test-vault",
+                endpoint: "https://test.endpoint.com",
+                accessKey: "test-key",
+                secretKey: "test-secret",
+                region: "us-east-1"
+            )],
+            settings: AppSettings()
+        )
+    }
+
+    func updateConfig(mnemonic: String, updates: ConfigInput) async throws -> ConfigOutput {
+        try updateResult.get()
+    }
+
+    func resetConfig() async throws {
+        try resetResult.get()
+    }
+
+    func createVault(mnemonic: String, name: String) async throws {
+        try createVaultResult.get()
+    }
+
+    func setActiveVault(mnemonic: String, name: String) async throws {
+        try setActiveVaultResult.get()
+    }
+
+    // Legacy methods for backward compatibility
     func getConfiguration(list: Bool, reset: Bool, accessKey: String?, secretKey: String?) async throws -> ConfigOutput {
         try configResult.get()
     }
@@ -42,218 +91,163 @@ class MockConfigurationService: ConfigurationServiceProtocol {
 // MARK: - File Operations Service Mock
 
 class MockFileOperationsService: FileOperationsServiceProtocol {
-    var uploadResult: Result<FileUploadOutput, Error> = .success(FileUploadOutput(
+    var listResult: Result<ListFilesOutput, Error> = .success(ListFilesOutput(
+        objects: [S3Object(key: "test-file.txt", size: 1024, lastModified: Date(), isDirectory: false, etag: "test-etag")],
+        success: true,
+        message: "Files listed successfully"
+    ))
+
+    var getResult: Result<GetFileOutput, Error> = .success(GetFileOutput(
+        success: true,
+        message: "File retrieved successfully",
+        bytesDownloaded: 1024,
+        fileSize: 1024
+    ))
+
+    var putResult: Result<PutFileOutput, Error> = .success(PutFileOutput(
         success: true,
         message: "File uploaded successfully",
-        filePath: "/test/path",
-        bucket: "test-bucket",
-        key: "test-key",
-        size: 1024
+        bytesUploaded: 1024,
+        encryptedSize: 1040
     ))
 
-    var downloadResult: Result<FileDownloadOutput, Error> = .success(FileDownloadOutput(
+    var deleteResult: Result<DeleteFileOutput, Error> = .success(DeleteFileOutput(
         success: true,
-        message: "File downloaded successfully",
-        localPath: "/local/test/path",
-        remotePath: "s3://test-bucket/test-key",
-        size: 1024
+        message: "File deleted successfully"
     ))
 
-    var listResult: Result<FileListOutput, Error> = .success(FileListOutput(
+    var copyResult: Result<CopyFileOutput, Error> = .success(CopyFileOutput(
         success: true,
-        message: "Files listed successfully",
-        files: [
-            FileInfo(name: "test1.txt", size: 100, lastModified: Date(), etag: "etag1"),
-            FileInfo(name: "test2.txt", size: 200, lastModified: Date(), etag: "etag2")
-        ],
-        totalSize: 300
+        message: "File copied successfully"
     ))
 
-    var deleteResult: Result<FileDeleteOutput, Error> = .success(FileDeleteOutput(
-        success: true,
-        message: "File deleted successfully",
-        deletedFiles: ["test-file.txt"]
-    ))
-
-    var syncResult: Result<FileSyncOutput, Error> = .success(FileSyncOutput(
-        success: true,
-        message: "Sync completed successfully",
-        uploaded: 5,
-        downloaded: 3,
-        deleted: 1,
-        errors: []
-    ))
-
-    func upload(localPath: String, bucket: String, key: String?, options: UploadOptions) async throws -> FileUploadOutput {
-        try uploadResult.get()
-    }
-
-    func download(remotePath: String, localPath: String?, options: DownloadOptions) async throws -> FileDownloadOutput {
-        try downloadResult.get()
-    }
-
-    func list(bucket: String, prefix: String?, options: ListOptions) async throws -> FileListOutput {
+    func listFiles(input: ListFilesInput) async throws -> ListFilesOutput {
         try listResult.get()
     }
 
-    func delete(paths: [String], options: DeleteOptions) async throws -> FileDeleteOutput {
+    func getFile(input: GetFileInput) async throws -> GetFileOutput {
+        try getResult.get()
+    }
+
+    func putFile(input: PutFileInput) async throws -> PutFileOutput {
+        try putResult.get()
+    }
+
+    func deleteFile(input: DeleteFileInput) async throws -> DeleteFileOutput {
         try deleteResult.get()
     }
 
-    func sync(localPath: String, bucket: String, options: SyncOptions) async throws -> FileSyncOutput {
-        try syncResult.get()
+    func copyFile(input: CopyFileInput) async throws -> CopyFileOutput {
+        try copyResult.get()
     }
 }
 
 // MARK: - Bucket Operations Service Mock
 
 class MockBucketOperationsService: BucketOperationsServiceProtocol {
-    var createResult: Result<BucketCreateOutput, Error> = .success(BucketCreateOutput(
-        success: true,
-        message: "Bucket created successfully",
-        bucket: "test-bucket"
-    ))
+    var createBucketResult: Result<Void, Error> = .success(())
+    var deleteBucketResult: Result<Void, Error> = .success(())
+    var listBucketsResult: Result<[String], Error> = .success(["test-bucket1", "test-bucket2"])
 
-    var listResult: Result<BucketListOutput, Error> = .success(BucketListOutput(
-        success: true,
-        message: "Buckets listed successfully",
-        buckets: [
-            BucketInfo(name: "bucket1", creationDate: Date()),
-            BucketInfo(name: "bucket2", creationDate: Date())
-        ]
-    ))
-
-    var deleteResult: Result<BucketDeleteOutput, Error> = .success(BucketDeleteOutput(
-        success: true,
-        message: "Bucket deleted successfully",
-        bucket: "test-bucket"
-    ))
-
-    func create(name: String, options: BucketCreateOptions) async throws -> BucketCreateOutput {
-        try createResult.get()
+    func createBucket(name: String) async throws {
+        try createBucketResult.get()
     }
 
-    func list(options: BucketListOptions) async throws -> BucketListOutput {
-        try listResult.get()
+    func deleteBucket(name: String) async throws {
+        try deleteBucketResult.get()
     }
 
-    func delete(name: String, options: BucketDeleteOptions) async throws -> BucketDeleteOutput {
-        try deleteResult.get()
+    func listBuckets() async throws -> [String] {
+        try listBucketsResult.get()
     }
 }
 
 // MARK: - Server Process Service Mock
 
 class MockServerProcessService: ServerProcessServiceProtocol {
-    var startSwiftS3Result: Result<ServerStartOutput, Error> = .success(ServerStartOutput(
-        success: true,
-        message: "SwiftS3 server started successfully",
+    var startResult: Result<ServerStartResult, Error> = .success(ServerStartResult(
+        port: 8080,
+        hostname: "localhost",
         pid: 12345,
-        port: 8080
+        background: true
     ))
 
-    var startCybKMSResult: Result<ServerStartOutput, Error> = .success(ServerStartOutput(
-        success: true,
-        message: "CybKMS server started successfully",
-        pid: 12346,
-        port: 8081
+    var stopResult: Result<ServerStopResult, Error> = .success(ServerStopResult(
+        port: 8080,
+        pid: 12345
     ))
 
-    var stopResult: Result<ServerStopOutput, Error> = .success(ServerStopOutput(
-        success: true,
-        message: "Server stopped successfully"
-    ))
-
-    var statusResult: Result<ServerStatusOutput, Error> = .success(ServerStatusOutput(
-        success: true,
-        message: "Server status retrieved",
+    var statusResult: Result<ServerStatusResult, Error> = .success(ServerStatusResult(
+        port: 8080,
         running: true,
         pid: 12345,
-        port: 8080,
-        uptime: 3600
+        httpStatus: 200
     ))
 
-    func startSwiftS3(options: ServerStartOptions) async throws -> ServerStartOutput {
-        try startSwiftS3Result.get()
+    var logsResult: Result<ServerLogsResult, Error> = .success(ServerLogsResult(
+        port: 8080,
+        pid: 12345,
+        logs: "Mock server logs",
+        follow: false
+    ))
+
+    func startServer(config: ServerStartConfig) async throws -> ServerStartResult {
+        try startResult.get()
     }
 
-    func startCybKMS(options: ServerStartOptions) async throws -> ServerStartOutput {
-        try startCybKMSResult.get()
-    }
-
-    func stopSwiftS3() async throws -> ServerStopOutput {
+    func stopServer(port: Int) async throws -> ServerStopResult {
         try stopResult.get()
     }
 
-    func stopCybKMS() async throws -> ServerStopOutput {
-        try stopResult.get()
-    }
-
-    func statusSwiftS3() async throws -> ServerStatusOutput {
+    func getServerStatus(port: Int) async throws -> ServerStatusResult {
         try statusResult.get()
     }
 
-    func statusCybKMS() async throws -> ServerStatusOutput {
-        try statusResult.get()
+    func getServerLogs(port: Int, lines: Int, follow: Bool) async throws -> ServerLogsResult {
+        try logsResult.get()
     }
 }
 
 // MARK: - Performance Testing Service Mock
 
 class MockPerformanceTestingService: PerformanceTestingServiceProtocol {
-    var benchmarkResult: Result<PerformanceBenchmarkOutput, Error> = .success(PerformanceBenchmarkOutput(
+    var benchmarkResult: Result<BenchmarkResult, Error> = .success(BenchmarkResult(
+        config: BenchmarkConfig(duration: 10, concurrency: 5, fileSize: 1024, swiftS3Mode: false, endpoint: "test", bucket: "test"),
         success: true,
-        message: "Benchmark completed successfully",
-        results: [
-            BenchmarkResult(operation: "upload", throughput: 100.5, latency: 0.01, successRate: 0.99),
-            BenchmarkResult(operation: "download", throughput: 150.2, latency: 0.008, successRate: 0.98)
-        ],
-        summary: BenchmarkSummary(
-            totalOperations: 1000,
-            duration: 10.5,
-            averageThroughput: 125.35,
-            averageLatency: 0.009,
-            overallSuccessRate: 0.985
-        )
+        metrics: ["throughput": 100.5, "latency": 0.01],
+        errorMessage: nil
     ))
 
-    var loadTestResult: Result<LoadTestOutput, Error> = .success(LoadTestOutput(
-        success: true,
-        message: "Load test completed successfully",
-        metrics: LoadTestMetrics(
-            concurrentUsers: 50,
-            totalRequests: 5000,
-            successfulRequests: 4950,
-            failedRequests: 50,
-            averageResponseTime: 0.25,
-            p95ResponseTime: 0.5,
-            p99ResponseTime: 0.8,
-            throughput: 476.19,
-            errorRate: 0.01
-        ),
-        recommendations: ["Consider increasing server capacity for higher loads"]
+    var regressionResult: Result<RegressionResult, Error> = .success(RegressionResult(
+        hasRegression: false,
+        details: "No regression detected",
+        baselineMetrics: ["throughput": 95.0],
+        currentMetrics: ["throughput": 100.5]
     ))
 
-    var stressTestResult: Result<StressTestOutput, Error> = .success(StressTestOutput(
+    var baselineUpdateResult: Result<BaselineUpdateResult, Error> = .success(BaselineUpdateResult(
         success: true,
-        message: "Stress test completed successfully",
-        breakingPoint: StressTestBreakingPoint(
-            concurrentUsers: 200,
-            errorRateThreshold: 0.05,
-            responseTimeThreshold: 2.0
-        ),
-        recommendations: ["System handles up to 200 concurrent users reliably"]
+        message: "Baseline updated successfully"
     ))
 
-    func runBenchmark(options: BenchmarkOptions) async throws -> PerformanceBenchmarkOutput {
+    var reportResult: Result<PerformanceReport, Error> = .success(PerformanceReport(
+        reportData: "Performance report data",
+        format: "json"
+    ))
+
+    func runBenchmark(config: BenchmarkConfig) async throws -> BenchmarkResult {
         try benchmarkResult.get()
     }
 
-    func runLoadTest(options: LoadTestOptions) async throws -> LoadTestOutput {
-        try loadTestResult.get()
+    func checkRegression() async throws -> RegressionResult {
+        try regressionResult.get()
     }
 
-    func runStressTest(options: StressTestOptions) async throws -> StressTestOutput {
-        try stressTestResult.get()
+    func updateBaseline() async throws -> BaselineUpdateResult {
+        try baselineUpdateResult.get()
+    }
+
+    func generateReport() async throws -> PerformanceReport {
+        try reportResult.get()
     }
 }

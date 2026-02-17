@@ -81,7 +81,7 @@ class DefaultServerProcessService: ServerProcessServiceProtocol {
             return ServerStartResult(
                 port: config.port,
                 hostname: config.hostname,
-                pid: process.processIdentifier,
+                pid: Int(process.processIdentifier),
                 background: true
             )
         } else {
@@ -297,5 +297,4 @@ class GetServerLogsHandler {
         let result = try await service.getServerLogs(port: input.port, lines: input.lines, follow: input.follow)
         return Output(result: result)
     }
-}</content>
-<parameter name="filePath">/home/user/dev/CybouS3/CybS3/Sources/CybS3/ServerHandlers.swift
+}

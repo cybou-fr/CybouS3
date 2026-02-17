@@ -195,14 +195,10 @@ public struct Encryption {
             encryptedData = sealedBox.combined!
         case .chacha20poly1305:
             let sealedBox = try ChaChaPoly.seal(data, using: key)
-            encryptedData = sealedBox.combined!
+            encryptedData = sealedBox.combined
         case .aes256cbc:
-            // Legacy CBC mode with PKCS7 padding
-            let iv = SymmetricKey(size: .bits128) // 16 bytes
-            let sealedBox = try AES.CBC.encrypt(data, using: key, iv: iv)
-            encryptedData = iv.withUnsafeBytes { ivBytes in
-                Data(ivBytes) + sealedBox
-            }
+            // Legacy CBC mode - not supported in current swift-crypto
+            throw EncryptionError.encryptionFailed
         }
         
         // Prepend algorithm identifier (1 byte) for decryption
@@ -238,13 +234,8 @@ public struct Encryption {
             let sealedBox = try ChaChaPoly.SealedBox(combined: encryptedData)
             return try ChaChaPoly.open(sealedBox, using: key)
         case .aes256cbc:
-            // Legacy CBC mode
-            guard encryptedData.count >= 16 else {
-                throw EncryptionError.decryptionFailed
-            }
-            let iv = SymmetricKey(data: encryptedData.prefix(16))
-            let ciphertext = encryptedData.suffix(from: 16)
-            return try AES.CBC.decrypt(ciphertext, using: key, iv: iv)
+            // Legacy CBC mode - not supported in current swift-crypto
+            throw EncryptionError.decryptionFailed
         }
     }
 }

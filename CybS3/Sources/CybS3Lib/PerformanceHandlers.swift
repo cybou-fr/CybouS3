@@ -201,5 +201,4 @@ class GenerateReportHandler {
         let result = try await service.generateReport()
         return Output(result: result)
     }
-}</content>
-<parameter name="filePath">/home/user/dev/CybouS3/CybS3/Sources/CybS3/PerformanceHandlers.swift
+}

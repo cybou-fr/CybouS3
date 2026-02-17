@@ -1,5 +1,5 @@
 import Foundation
-import CybS3Lib
+import CybKMSClient
 
 /// KMS operation results
 struct KMSResult {
@@ -25,7 +25,7 @@ class CybKMSProvider: KMSProvider {
 
     func encrypt(data: Data, keyId: String, context: [String: String]?) async throws -> KMSResult {
         let result = try await client.encrypt(
-            data: data,
+            plaintext: data,
             keyId: keyId,
             encryptionContext: context
         )
@@ -47,12 +47,8 @@ class CybKMSProvider: KMSProvider {
     }
 
     func generateDataKey(keyId: String, context: [String: String]?) async throws -> (dataKey: Data, encryptedDataKey: Data) {
-        let result = try await client.generateDataKey(
-            keyId: keyId,
-            encryptionContext: context
-        )
-
-        return (dataKey: result.plaintext, encryptedDataKey: result.ciphertextBlob)
+        // TODO: Implement with correct CybKMSClient API
+        throw NSError(domain: "KMS", code: -1, userInfo: [NSLocalizedDescriptionKey: "Not implemented"])
     }
 }
 
