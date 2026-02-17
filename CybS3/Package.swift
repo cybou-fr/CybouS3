@@ -1,4 +1,4 @@
-// swift-tools-version: 6.2.4
+// swift-tools-version: 6.2.3
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 
 import PackageDescription
@@ -11,7 +11,7 @@ let package = Package(
         .iOS(.v15)
     ],
     products: [
-        .executable(name: "cybs3", targets: ["cybs3"])
+        .executable(name: "cybs3", targets: ["CybS3"])
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-argument-parser", from: "1.5.0"),
@@ -32,7 +32,7 @@ let package = Package(
             ]
         ),
         .executableTarget(
-            name: "cybs3",
+            name: "CybS3",
             dependencies: [
                 "CybS3Lib",
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
