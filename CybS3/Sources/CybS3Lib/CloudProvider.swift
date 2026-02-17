@@ -18,6 +18,7 @@ public enum CloudProvider: String, Codable, Sendable, CaseIterable {
     case tencent = "tencent"
     case huawei = "huawei"
     case oracle = "oracle"
+    case idrive = "idrive"
 
     /// Display name for the provider.
     public var displayName: String {
@@ -35,13 +36,14 @@ public enum CloudProvider: String, Codable, Sendable, CaseIterable {
         case .tencent: return "Tencent Cloud COS"
         case .huawei: return "Huawei Cloud OBS"
         case .oracle: return "Oracle Cloud Infrastructure"
+        case .idrive: return "IDrive e2"
         }
     }
 
     /// Whether this provider supports S3-compatible API.
     public var isS3Compatible: Bool {
         switch self {
-        case .aws, .minio, .wasabi, .digitalocean, .linode, .cloudflare:
+        case .aws, .minio, .wasabi, .digitalocean, .linode, .cloudflare, .idrive:
             return true
         case .gcp, .azure, .backblaze, .alibaba, .tencent, .huawei, .oracle:
             return false // These have different APIs but can be adapted
@@ -64,6 +66,7 @@ public enum CloudProvider: String, Codable, Sendable, CaseIterable {
         case .tencent: return "ap-beijing"
         case .huawei: return "cn-north-1"
         case .oracle: return "us-ashburn-1"
+        case .idrive: return "us-west-1"
         }
     }
 
@@ -90,6 +93,10 @@ public enum CloudProvider: String, Codable, Sendable, CaseIterable {
                 "northeurope", "westeurope", "uksouth", "ukwest",
                 "eastasia", "southeastasia", "japaneast", "japanwest",
                 "australiaeast", "australiasoutheast", "australiacentral"
+            ]
+        case .idrive:
+            return [
+                "us-west-1", "eu-central-1", "ap-southeast-1"
             ]
         default:
             return [defaultRegion]
@@ -153,6 +160,8 @@ public struct CloudConfig: Codable, Sendable {
             return S3Endpoint(host: "\(region).linodeobjects.com", port: 443, useSSL: true)
         case .cloudflare:
             return S3Endpoint(host: "\(region).r2.cloudflarestorage.com", port: 443, useSSL: true)
+        case .idrive:
+            return S3Endpoint(host: "s3.\(region).idrivee2.com", port: 443, useSSL: true)
         case .backblaze:
             return S3Endpoint(host: "s3.\(region).backblazeb2.com", port: 443, useSSL: true)
         default:

@@ -819,4 +819,174 @@ final class EnvironmentIntegrationTests: XCTestCase {
 
         print("   ✅ Cross-platform compatibility verified")
     }
+
+    // MARK: - IDrive e2 Integration Tests
+
+    func getIDriveCredentials() -> TestCredentials? {
+        guard let accessKey = ProcessInfo.processInfo.environment["IDRIVE_ACCESS_KEY"],
+              let secretKey = ProcessInfo.processInfo.environment["IDRIVE_SECRET_KEY"],
+              let region = ProcessInfo.processInfo.environment["IDRIVE_REGION"] else {
+            return nil
+        }
+        // IDrive e2 uses s3.{region}.idrivee2.com format
+        let endpoint = "https://s3.\(region).idrivee2.com"
+        return TestCredentials(
+            endpoint: endpoint,
+            region: region,
+            accessKey: accessKey,
+            secretKey: secretKey
+        )
+    }
+
+    func skipIfNoIDriveCredentials(file: StaticString = #file, line: UInt = #line) -> TestCredentials? {
+        guard let creds = getIDriveCredentials() else {
+            print("⏭️  Skipping IDrive Integration Test: Environment variables not set.")
+            print("   Required: IDRIVE_ACCESS_KEY, IDRIVE_SECRET_KEY, IDRIVE_REGION")
+            print("   Example: IDRIVE_REGION=us-west-1")
+            return nil
+        }
+        return creds
+    }
+
+    func testIDriveFullLifecycle() async throws {
+        guard let creds = skipIfNoIDriveCredentials() else { return }
+
+        let bucketName = "cybs3-idrive-test-\(UInt32.random(in: 1000...9999))"
+        let client = createClient(creds: creds, bucket: bucketName)
+
+        print("🧪 Starting IDrive e2 Full Lifecycle Test")
+        print("   Endpoint: \(creds.endpoint)")
+        print("   Region: \(creds.region)")
+        print("   Bucket: \(bucketName)")
+
+        let objectKey = "idrive-test-file.txt"
+        let testContent = "Hello IDrive e2 from CybS3! 🚀 Timestamp: \(Date())"
+        let testData = testContent.data(using: .utf8)!
+
+        // 1. Create Bucket
+        print("1️⃣  Creating bucket: \(bucketName)")
+        do {
+            try await client.createBucket(name: bucketName)
+            print("   ✅ Bucket created on IDrive e2")
+        } catch {
+            print("   ❌ Failed to create bucket: \(error)")
+            throw error
+        }
+
+        // 2. Put Object
+        print("2️⃣  Uploading object: \(objectKey) (\(testData.count) bytes)")
+        do {
+            try await client.putObject(key: objectKey, data: testData)
+            print("   ✅ Object uploaded to IDrive e2")
+        } catch {
+            print("   ❌ Failed to upload object: \(error)")
+            // Try to cleanup bucket
+            try? await cleanupBucketAndShutdown(client, name: bucketName)
+            throw error
+        }
+
+        // 3. Get Object
+        print("3️⃣  Downloading object: \(objectKey)")
+        do {
+            let downloadedData = try await client.getObject(key: objectKey)
+            let downloadedContent = String(data: downloadedData, encoding: .utf8)
+            XCTAssertEqual(downloadedContent, testContent, "Downloaded content should match uploaded content")
+            print("   ✅ Object downloaded from IDrive e2")
+        } catch {
+            print("   ❌ Failed to download object: \(error)")
+            try? await cleanupBucketAndShutdown(client, name: bucketName)
+            throw error
+        }
+
+        // 4. List Objects
+        print("4️⃣  Listing objects in bucket")
+        do {
+            let objects = try await client.listObjects(prefix: nil, delimiter: nil)
+            XCTAssertTrue(objects.contains { $0.key == objectKey }, "Object should be in list")
+            print("   ✅ Found \(objects.count) objects in IDrive e2 bucket")
+        } catch {
+            print("   ❌ Failed to list objects: \(error)")
+            try? await cleanupBucketAndShutdown(client, name: bucketName)
+            throw error
+        }
+
+        // 5. Delete Object
+        print("5️⃣  Deleting object: \(objectKey)")
+        do {
+            try await client.deleteObject(key: objectKey)
+            print("   ✅ Object deleted from IDrive e2")
+        } catch {
+            print("   ❌ Failed to delete object: \(error)")
+            try? await cleanupBucketAndShutdown(client, name: bucketName)
+            throw error
+        }
+
+        // 6. Delete Bucket
+        print("6️⃣  Deleting bucket: \(bucketName)")
+        do {
+            try await client.deleteBucket(name: bucketName)
+            print("   ✅ Bucket deleted from IDrive e2")
+        } catch {
+            print("   ❌ Failed to delete bucket: \(error)")
+            // Shutdown client anyway
+            try? await client.shutdown()
+            throw error
+        }
+
+        // 7. Shutdown client
+        try await client.shutdown()
+
+        print("🎉 IDrive e2 Full Lifecycle Test completed successfully!")
+    }
+
+    func testIDriveLargeFile() async throws {
+        guard let creds = skipIfNoIDriveCredentials() else { return }
+
+        let bucketName = "cybs3-idrive-large-test-\(UInt32.random(in: 1000...9999))"
+        let client = createClient(creds: creds, bucket: bucketName)
+
+        print("🧪 Starting IDrive e2 Large File Test")
+        print("   Bucket: \(bucketName)")
+
+        let objectKey = "large-test-file.dat"
+        // Create a 10MB test file
+        let largeData = Data(repeating: 0x41, count: 10 * 1024 * 1024) // 10MB of 'A' characters
+
+        // 1. Create Bucket
+        do {
+            try await client.createBucket(name: bucketName)
+            print("   ✅ Bucket created")
+        } catch {
+            print("   ❌ Failed to create bucket: \(error)")
+            throw error
+        }
+
+        // 2. Upload Large File
+        print("2️⃣  Uploading 10MB file to IDrive e2")
+        do {
+            try await client.putObject(key: objectKey, data: largeData)
+            print("   ✅ Large file uploaded successfully")
+        } catch {
+            print("   ❌ Failed to upload large file: \(error)")
+            try? await cleanupBucketAndShutdown(client, name: bucketName)
+            throw error
+        }
+
+        // 3. Download and Verify Large File
+        print("3️⃣  Downloading and verifying 10MB file from IDrive e2")
+        do {
+            let downloadedData = try await client.getObject(key: objectKey)
+            XCTAssertEqual(downloadedData.count, largeData.count, "Downloaded file size should match")
+            XCTAssertEqual(downloadedData, largeData, "Downloaded content should match original")
+            print("   ✅ Large file downloaded and verified successfully")
+        } catch {
+            print("   ❌ Failed to download/verify large file: \(error)")
+            try? await cleanupBucketAndShutdown(client, name: bucketName)
+            throw error
+        }
+
+        // Cleanup
+        try await cleanupBucketAndShutdown(client, name: bucketName)
+        print("🎉 IDrive e2 Large File Test completed successfully!")
+    }
 }

@@ -45,7 +45,8 @@ let package = Package(
         .testTarget(
             name: "CybS3Tests",
             dependencies: [
-                "CybS3Lib"
+                "CybS3Lib",
+                .product(name: "SwiftCheck", package: "SwiftCheck")
             ]
         ),
     ]

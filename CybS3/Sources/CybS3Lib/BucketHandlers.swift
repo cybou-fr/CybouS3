@@ -111,5 +111,4 @@ class ListBucketsHandler {
         let buckets = try await service.listBuckets()
         return Output(buckets: buckets, vaultName: input.vaultName, json: input.json)
     }
-}</content>
-<parameter name="filePath">/home/user/dev/CybouS3/CybS3/Sources/CybS3/BucketHandlers.swift
+}

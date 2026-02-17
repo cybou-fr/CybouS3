@@ -2,6 +2,35 @@ import Foundation
 import Crypto
 import SwiftBIP39
 
+/// Supported encryption algorithms
+public enum EncryptionAlgorithm: UInt8, Codable, Sendable {
+    case aes256gcm = 0x01
+    case chacha20poly1305 = 0x02
+    case aes256cbc = 0x03 // Legacy support
+}
+
+/// Encryption configuration
+public struct EncryptionConfig: Codable, Sendable {
+    public let algorithm: EncryptionAlgorithm
+    public let keyRotationDays: Int?
+    public let enableDoubleEncryption: Bool
+    
+    public init(algorithm: EncryptionAlgorithm = .aes256gcm, 
+                keyRotationDays: Int? = nil,
+                enableDoubleEncryption: Bool = false) {
+        self.algorithm = algorithm
+        self.keyRotationDays = keyRotationDays
+        self.enableDoubleEncryption = enableDoubleEncryption
+    }
+    
+    public static let `default` = EncryptionConfig()
+    public static let highSecurity = EncryptionConfig(
+        algorithm: .chacha20poly1305,
+        keyRotationDays: 90,
+        enableDoubleEncryption: true
+    )
+}
+
 public enum EncryptionError: Error, LocalizedError {
     case encryptionFailed
     case decryptionFailed
@@ -151,25 +180,71 @@ public struct Encryption {
         return derived.prefix(byteCount)
     }
     
-    /// Encrypts data using AES-GCM.
+    /// Encrypts data using the specified algorithm.
     /// - Parameters:
     ///   - data: The plaintext data.
     ///   - key: The 256-bit symmetric key.
-    /// - Returns: The combined seal (Nonce + Ciphertext + Tag).
-    public static func encrypt(data: Data, key: SymmetricKey) throws -> Data {
-        // AES.GCM
-        // We use a random Nonce
-        let sealedBox = try AES.GCM.seal(data, using: key)
-        return sealedBox.combined! // Returns nonce + ciphertext + tag
+    ///   - algorithm: The encryption algorithm to use (default: AES-256-GCM).
+    /// - Returns: The combined seal with algorithm identifier.
+    public static func encrypt(data: Data, key: SymmetricKey, algorithm: EncryptionAlgorithm = .aes256gcm) throws -> Data {
+        let encryptedData: Data
+        
+        switch algorithm {
+        case .aes256gcm:
+            let sealedBox = try AES.GCM.seal(data, using: key)
+            encryptedData = sealedBox.combined!
+        case .chacha20poly1305:
+            let sealedBox = try ChaChaPoly.seal(data, using: key)
+            encryptedData = sealedBox.combined!
+        case .aes256cbc:
+            // Legacy CBC mode with PKCS7 padding
+            let iv = SymmetricKey(size: .bits128) // 16 bytes
+            let sealedBox = try AES.CBC.encrypt(data, using: key, iv: iv)
+            encryptedData = iv.withUnsafeBytes { ivBytes in
+                Data(ivBytes) + sealedBox
+            }
+        }
+        
+        // Prepend algorithm identifier (1 byte) for decryption
+        var result = Data()
+        result.append(algorithm.rawValue)
+        result.append(encryptedData)
+        return result
     }
     
-    /// Decrypts data using AES-GCM.
+    /// Decrypts data using automatic algorithm detection.
     /// - Parameters:
-    ///   - data: The combined seal (Nonce + Ciphertext + Tag).
+    ///   - data: The encrypted data with algorithm identifier.
     ///   - key: The 256-bit symmetric key.
     /// - Returns: The plaintext data.
     public static func decrypt(data: Data, key: SymmetricKey) throws -> Data {
-        let sealedBox = try AES.GCM.SealedBox(combined: data)
-        return try AES.GCM.open(sealedBox, using: key)
+        guard data.count > 1 else {
+            throw EncryptionError.decryptionFailed
+        }
+        
+        // Extract algorithm identifier
+        let algorithmByte = data[0]
+        let encryptedData = data[1...]
+        
+        guard let algorithm = EncryptionAlgorithm(rawValue: algorithmByte) else {
+            throw EncryptionError.decryptionFailed
+        }
+        
+        switch algorithm {
+        case .aes256gcm:
+            let sealedBox = try AES.GCM.SealedBox(combined: encryptedData)
+            return try AES.GCM.open(sealedBox, using: key)
+        case .chacha20poly1305:
+            let sealedBox = try ChaChaPoly.SealedBox(combined: encryptedData)
+            return try ChaChaPoly.open(sealedBox, using: key)
+        case .aes256cbc:
+            // Legacy CBC mode
+            guard encryptedData.count >= 16 else {
+                throw EncryptionError.decryptionFailed
+            }
+            let iv = SymmetricKey(data: encryptedData.prefix(16))
+            let ciphertext = encryptedData.suffix(from: 16)
+            return try AES.CBC.decrypt(ciphertext, using: key, iv: iv)
+        }
     }
 }

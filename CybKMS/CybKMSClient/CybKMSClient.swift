@@ -143,36 +143,6 @@ public struct KMSDecryptResult: Codable, Sendable {
     }
 }
 
-/// Result of a KMS encrypt operation
-public struct KMSEncryptResult: Codable, Sendable {
-    public let ciphertextBlob: Data
-    public let keyId: String
-    public let arn: String
-    public let encryptionAlgorithm: KMSEncryptionAlgorithm
-
-    public init(ciphertextBlob: Data, keyId: String, arn: String, encryptionAlgorithm: KMSEncryptionAlgorithm = .symmetricDefault) {
-        self.ciphertextBlob = ciphertextBlob
-        self.keyId = keyId
-        self.arn = arn
-        self.encryptionAlgorithm = encryptionAlgorithm
-    }
-}
-
-/// Result of a KMS decrypt operation
-public struct KMSDecryptResult: Codable, Sendable {
-    public let plaintext: Data
-    public let keyId: String
-    public let arn: String
-    public let encryptionAlgorithm: KMSEncryptionAlgorithm
-
-    public init(plaintext: Data, keyId: String, arn: String, encryptionAlgorithm: KMSEncryptionAlgorithm = .symmetricDefault) {
-        self.plaintext = plaintext
-        self.keyId = keyId
-        self.arn = arn
-        self.encryptionAlgorithm = encryptionAlgorithm
-    }
-}
-
 /// CybKMS Client - HTTP client for communicating with CybKMS server
 public actor CybKMSClient {
     private let httpClient: HTTPClient
@@ -345,8 +315,9 @@ private struct ScheduleKeyDeletionInput: Encodable {
     let pendingWindowInDays: Int?
 }
 
-private struct ScheduleKeyDeletionOutput: Decodable {
-    let keyId: String
-    let deletionDate: Date
-    let keyState: KMSKeyState
+/// Output for scheduling key deletion
+public struct ScheduleKeyDeletionOutput: Decodable {
+    public let keyId: String
+    public let deletionDate: Date
+    public let keyState: KMSKeyState
 }
