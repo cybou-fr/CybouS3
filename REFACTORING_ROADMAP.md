@@ -28,18 +28,20 @@
 
 ### **Critical Issues Identified**
 
+### **Critical Issues Identified**
+
 #### 1. **Massive Files (Violation of Single Responsibility)**
-- `Commands.swift`: 2,313 lines - All CLI commands in one file
-- `S3Controller.swift`: 2,636 lines - Server controller with 998-line `addRoutes()` method
-- `S3Client.swift`: 1,551 lines - HTTP client with extensive error handling
-- `FileSystemStorage.swift`: 1,652 lines - Storage implementation with multiple responsibilities
+- `Commands.swift`: **SOLVED** (Reduced to < 100 lines)
+- `S3Controller.swift`: **SOLVED** (Reduced to ~200 lines)
+- `S3Client.swift`: 1,551 lines - HTTP client with extensive error handling (PENDING)
+- `FileSystemStorage.swift`: 1,645 lines - Storage implementation with encryption and integrity logic still embedded (PARTIAL)
 
 #### 2. **God Methods**
-- `S3Controller.addRoutes()`: 998 lines handling all route registration
-- Multiple methods exceeding 100+ lines with mixed responsibilities
+- `S3Controller.addRoutes()`: **SOLVED** (Split into route handlers)
+- Multiple methods exceeding 100+ lines with mixed responsibilities (Ongoing)
 
 #### 3. **Tight Coupling**
-- CLI commands directly coupled to business logic
+- CLI commands directly coupled to business logic (Improved, but Command Handler pattern still pending)
 - Service classes with multiple responsibilities
 - Global state in configuration management
 
@@ -49,19 +51,15 @@
 - Error handling duplicated across similar operations
 
 #### 5. **Legacy Code Cleanup**
-- **CybKMSService.swift**: 404-line embedded KMS service in SwiftS3 (superseded by standalone CybKMS)
+- **CybKMSService.swift**: **SOLVED** (Legacy code removed)
 - Outdated integration patterns between components
-- Deprecated API usage in cross-component communication
 
 #### 6. **Recent Compilation Issues** ⚠️
-- **CybKMSClient.swift**: Duplicate struct declarations (KMSEncryptResult, KMSDecryptResult)
-- **BucketHandlers.swift**: Malformed file content with embedded tool output
-- **MockServices.swift**: Missing protocol conformances and type definitions
-- **CoreHandlers.swift**: Missing Configuration type imports
+- **All previous compilation issues resolved** ✅
 
 ## 🛠️ **Refactoring Roadmap**
 
-### **Phase 0: Ecosystem Cleanup (Priority: Critical)**
+### **Phase 0: Ecosystem Cleanup (Priority: Critical)** ✅ **COMPLETED**
 
 #### **0.1 Remove Legacy CybKMS Integration** ✅
 ```
@@ -84,61 +82,67 @@ SwiftS3/Sources/SwiftS3/CybKMS/
 - [x] **BucketHandlers.swift**: Clean malformed file content
 - [x] **MockServices.swift**: Add missing protocol conformances
 - [x] **CoreHandlers.swift**: Fix missing type imports
-- [x] **Validate builds**: Ensure all components compile successfully
+- [x] **Validate builds**: All components compile successfully
 
 ### **Phase 1: File Structure Refactoring (Priority: High)**
 
-#### **1.1 Split Commands.swift into Command Groups** ✅
+#### **1.1 Split Commands.swift into Command Groups** ✅ **COMPLETED**
 ```
-CybS3/Sources/CybS3/Commands/
-├── GlobalOptions.swift         # Extracted
-├── HealthCommands.swift        # Extracted
-├── ChaosCommands.swift         # Extracted
-├── TestCommands.swift          # Extracted
-├── CoreCommands.swift          # Login, Logout, Config
-├── FileCommands.swift          # Files operations (List, Get, Put, Delete, Copy)
-├── BucketCommands.swift        # Bucket operations (Create, Delete, List)
-└── ...
+CybS3/Sources/
+├── CybS3/                      # Main command definition
+│   ├── Commands.swift          # Entry point
+│   ├── CoreCommands.swift      # Login, Logout, Config
+│   ├── FileCommands.swift      # Files operations
+│   ├── BucketCommands.swift    # Bucket operations
+│   └── ...
+└── Commands/                   # Sub-commands
+    ├── GlobalOptions.swift
+    ├── HealthCommands.swift
+    └── TestCommands.swift
 ```
 
-#### **1.2 Split S3Controller.swift into Route Handlers** ✅
+#### **1.2 Split S3Controller.swift into Route Handlers** ✅ **COMPLETED**
 ```
 SwiftS3/Sources/SwiftS3/Controllers/
-├── S3Controller.swift          # Main controller (Delegates to extensions)
-├── BucketRoutes.swift          # Extracted
-├── ObjectRoutes.swift          # Extracted
-├── AdminRoutes.swift           # Extracted (Admin, Analytics, Batch)
+├── S3Controller.swift          # Main controller (reduced to ~200 lines)
+├── BucketRoutes.swift          # Bucket operations
+├── ObjectRoutes.swift          # Object operations
+├── AdminRoutes.swift           # Admin operations
 └── Middleware/
     ├── S3Metrics.swift         # Extracted
     └── ...
 ```
 
-#### **1.3 Split FileSystemStorage.swift into Focused Components** 🔄 **IN PROGRESS**
+#### **1.3 Split FileSystemStorage.swift into Focused Components** 🔄 **PARTIAL**
+- [x] **SQLMetadataStore.swift**: Metadata management extracted
+- [ ] **EncryptionHandler.swift**: Encryption logic still in FileSystemStorage
+- [ ] **IntegrityChecker.swift**: Checksum logic still in FileSystemStorage
+- [ ] **StorageBackend.swift**: Base protocol defined
+
 ```
 SwiftS3/Sources/SwiftS3/Storage/
-├── FileSystemStorage.swift     # Main storage actor
-├── StorageOperations.swift     # Core CRUD operations
-├── EncryptionHandler.swift     # SSE-KMS integration with CybKMS
-├── SQLMetadataStore.swift      # ✅ SQL-based Metadata management (Completed)
-└── IntegrityChecker.swift      # Data integrity verification
+├── FileSystemStorage.swift     # Main storage actor (Still ~1.6k lines)
+├── SQLMetadataStore.swift      # ✅ Metadata management
+├── StorageBackend.swift        # ✅ Protocol definition
+├── EncryptionHandler.swift     # ⏳ Pending extraction
+└── IntegrityChecker.swift      # ⏳ Pending extraction
 ```
 
-#### **1.4 CybKMS Package Structure Optimization**
+#### **1.4 CybKMS Package Structure Optimization** ✅ **COMPLETED**
 ```
-CybKMS/Sources/
-├── CybKMS/                     # Server implementation
-│   ├── CybKMSServer.swift      # Main server (already clean)
-│   ├── KMSCore.swift           # Core KMS operations (consider splitting)
-│   └── Controllers/
-│       └── KMSController.swift # HTTP API routes
-└── CybKMSClient/               # Client library (already well-structured)
-    └── CybKMSClient.swift      # HTTP client for KMS operations
+CybKMS/
+├── Sources/
+│   └── CybKMS/                 # Server implementation
+│       ├── CybKMSServer.swift
+│       └── KMSCore.swift
+└── CybKMSClient/               # Client library (at root level)
+    └── CybKMSClient.swift
 ```
 
-#### **1.5 Split S3Client.swift into Components**
+#### **1.5 Split S3Client.swift into Components** ⏳ **PENDING**
 ```
 CybS3/Sources/CybS3Lib/Network/
-├── S3Client.swift              # Main client interface (~200 lines)
+├── S3Client.swift              # Main client interface (Currently ~1.5k lines)
 ├── S3RequestBuilder.swift      # Request construction
 ├── S3ResponseParser.swift      # Response parsing
 ├── S3ErrorHandler.swift        # Error handling and retry logic
@@ -704,219 +708,76 @@ struct EcosystemIntegrationTests {
 
 ## 📊 **Implementation Timeline**
 
-### **Completed: Phase 3 - Enterprise Integrations & Multi-Cloud Support** ✅
-- ✅ **Multi-Cloud Support**: IDrive e2 integration complete with S3-compatible endpoints
-- ✅ **Advanced Encryption**: Multiple algorithms (AES-GCM, ChaCha20-Poly1305, AES-CBC) implemented
+### **Phase 3: Enterprise Integrations (COMPLETED)** ✅
+- ✅ **Multi-Cloud Support**: IDrive e2 integration complete
+- ✅ **Advanced Encryption**: AES-GCM, ChaCha20-Poly1305, AES-CBC implemented
 - ✅ **Enterprise Authentication**: LDAP integration in SwiftS3 server
-- ✅ **Compliance Framework**: SOC2, GDPR, HIPAA, PCI-DSS, ISO27001 compliance checkers
-- ✅ **Audit Logging**: File-based audit storage with structured JSON entries
-- ✅ **Unified Auth Service**: Cross-component authentication validation
+- ✅ **Compliance Framework**: SOC2, GDPR, HIPAA, PCI-DSS compliance checkers
+- ✅ **Audit Logging**: Structured JSON audit trails
 
-### **Completed: Phase 0 & Phase 1 - Cleanup & Refactoring** ✅
-- ✅ **Ecosystem Cleanup**: Legacy CybKMS removed, compilation fixed, duplicates removed.
-- ✅ **Command Refactoring**: `Commands.swift` split into focused command files.
-- ✅ **Controller Refactoring**: `S3Controller.swift` split into Route Handlers (Bucket, Object, Admin).
-- ✅ **Metadata Layer**: `SQLMetadataStore` integrated for robust metadata management.
+### **Phase 0 & 1: Cleanup & Foundation (COMPLETED)** ✅
+- ✅ **Ecosystem Cleanup**: Legacy CybKMS removed
+- ✅ **Command Refactoring**: `Commands.swift` split into focused files
+- ✅ **Controller Refactoring**: `S3Controller.swift` split into Route Handlers
+- ✅ **Metadata Layer**: `SQLMetadataStore` implemented
+- ✅ **CybKMS Structure**: Package structure optimized
 
-### **Current: Phase 1.3 & Phase 2 - Encryption & Architecture** 🔄
-- 🔄 **Storage Refactoring**: Split `FileSystemStorage.swift` (Encryption/Integrity handlers pending).
-- ⏳ **Architecture Improvements**: Command Handler pattern, Service Layer refactoring.
-- ⏳ **Advanced Security**: Reviewing `S3Authenticator` and `PolicyEvaluator` for Phase 3 enhancements.
+### **Current: Phase 1 & 2 - Core Refactoring (IN PROGRESS)** 🔄
+- 🔄 **Storage Refactoring**: Extracting Encryption and Integrity logic from `FileSystemStorage.swift`
+- ⏳ **Client Refactoring**: Splitting `S3Client.swift` into focused components
+- ⏳ **Architecture Improvements**: Implementing Command Handler pattern
+- ⏳ **Service Layer**: Refactoring business logic into dedicated services
 
-### **Week 1-2: Remaining Work Completion**
-- **Immediate Fixes**: Resolve all compilation issues and validate builds
-- **Multi-Cloud Validation**: Test IDrive integration with real credentials
-- **Enterprise Feature Testing**: Validate LDAP, compliance, and audit logging
-- **Integration Testing**: End-to-end ecosystem testing (CybS3 ↔ SwiftS3 ↔ CybKMS)
+### **Near Term (Weeks 1-4)**
+- **Finish Storage Refactoring**: Complete Phase 1.3
+- **Split S3Client**: Complete Phase 1.5
+- **Resolve Compilation Issues**: Verify all `CybKMSClient` integration points
+- **Integration Testing**: Verify end-to-end flows with new structure
 
-### **Month 1: Foundation Refactoring**
-- Split Commands.swift and S3Controller.swift into focused components
-- Implement command handler pattern for CLI operations
-- Basic testing of refactored components
-- Validate multi-cloud integrations work with refactored code
+### **Medium Term (Months 2-3)**
+- **Architecture Consolidation**: Service layer refactoring (Phase 2)
+- **CybKMS Internal Improvements**: Split `KMSCore.swift`
+- **Error Handling Standardization**: Unified error handling across components
 
-### **Month 2-3: Architecture Consolidation**
-- Service layer refactoring in CybS3
-- CybKMS code quality improvements (split KMSCore.swift)
-- Error handling standardization across all components
-- Dependency injection improvements
-- Cross-component communication patterns
-
-### **Month 4-6: Advanced Features Development**
-- **Additional Cloud Providers**: GCP and Azure native clients
-- **Advanced LDAP Features**: Group-based auth and LDAPS support
-- **Key Rotation Automation**: Automated key lifecycle management
-- **Multi-Region Replication**: Cross-region data synchronization
-- **Advanced Compliance**: Custom compliance frameworks
-
-### **Month 7-8: Quality Assurance**
-- Code duplication elimination
-- CybKMS integration testing infrastructure
-- Ecosystem integration tests (CybS3 ↔ SwiftS3 ↔ CybKMS)
-- Test coverage expansion to 80%+
-- Performance testing integration
-
-### **Month 9: Polish & Documentation**
-- API documentation for all components
-- CybKMS developer experience improvements
-- Final integration testing
-- Ecosystem deployment guides
+### **Long Term (Months 4+)**
+- **Advanced Cloud Providers**: GCP and Azure native clients
+- **Key Rotation**: Automated key lifecycle management
+- **Multi-Region Replication**: Cross-region sync
+- **Performance Optimization**: Async/await modernization
 
 ## 🎯 **Success Metrics**
 
 ### **Code Quality Metrics**
-- **File sizes**: No file > 500 lines (CybKMS files already compliant)
-- **Method complexity**: No method > 50 lines
+- **File sizes**: No file > 500 lines (Target: Reduce `FileSystemStorage` and `S3Client`)
+- **Test coverage**: > 80% on core business logic
 - **Cyclomatic complexity**: < 10 for most methods
-- **Test coverage**: > 80% on core business logic across all components
 
 ### **Ecosystem Metrics**
-- **Cross-component integration**: Seamless CybS3 ↔ SwiftS3 ↔ CybKMS communication
-- **API compatibility**: CybKMS maintains 100% AWS KMS API compatibility
-- **Deployment independence**: Each component can be deployed/scaled independently
-- **Health monitoring**: Comprehensive health checks across all three services
-
-### **Enterprise & Multi-Cloud Metrics** ✅ **ACHIEVED**
-- **Multi-Cloud Support**: 14+ cloud providers with unified API (IDrive e2 tested)
-- **Encryption Algorithms**: AES-GCM, ChaCha20-Poly1305, AES-CBC with algorithm identification
-- **Compliance Standards**: SOC2, GDPR, HIPAA, PCI-DSS, ISO27001 automated checking
-- **Audit Logging**: Structured JSON audit trails with compliance tagging
-- **LDAP Authentication**: Enterprise directory integration in SwiftS3
-- **Security Features**: Zero-knowledge encryption, key rotation, retention policies
-
-### **Performance Metrics**
-- **Build time**: No significant regression (CybKMS builds in ~30 seconds)
-- **Memory usage**: No leaks in refactored components
-- **API latency**: CybKMS operations < 100ms P95
-- **Concurrent operations**: Support for 1000+ concurrent KMS operations
-- **Multi-cloud performance**: Consistent performance across cloud providers
+- **Integration**: Seamless CybS3 ↔ SwiftS3 ↔ CybKMS communication
+- **API Compatibility**: 100% AWS KMS API compatibility
+- **Deployment**: Independent scaling of all 3 components
 
 ## ⚠️ **Risks & Mitigation**
-
-### **Breaking Changes**
-- **Risk**: Refactoring may introduce breaking changes in component interfaces
-- **Mitigation**: Comprehensive integration testing required, maintain backward compatibility where possible
-
-### **Cross-Component Dependencies**
-- **Risk**: Changes in CybKMS API affect SwiftS3 integration
-- **Mitigation**: Versioned APIs, comprehensive contract testing between components
-
-### **Performance Impact**
-- **Risk**: HTTP communication between components adds latency
-- **Mitigation**: Profile before/after refactoring, implement connection pooling and caching
-
-### **Team Coordination**
-- **Risk**: Three separate codebases require coordinated releases
-- **Mitigation**: Clear communication channels, shared testing infrastructure, automated integration tests
-
-### **CybKMS Operational Complexity**
-- **Risk**: Additional operational overhead of running three services
-- **Mitigation**: Provide deployment automation, health monitoring, and scaling guidance
-
-### **Compilation Issues** ⚠️ **CURRENT RISK - HIGH PRIORITY**
-- **Risk**: Recent compilation errors in CybKMSClient and other files block testing and validation
-- **Impact**: Prevents validation of multi-cloud and enterprise features, delays refactoring progress
-- **Mitigation**: 
-  - Immediate priority to fix duplicate declarations, malformed files, and missing types
-  - Comprehensive testing after fixes to ensure functionality
-  - Code review to prevent similar issues in future
-
-### **Multi-Cloud Provider Compatibility** ✅ **MITIGATED**
-- **Risk**: Different cloud providers have varying S3 compatibility levels
-- **Mitigation**: Comprehensive provider abstraction layer, extensive integration testing
-- **Status**: IDrive e2 integration complete and ready for testing
-
-### **Enterprise Security Compliance** ✅ **MITIGATED**
-- **Risk**: Complex compliance requirements across multiple standards
-- **Mitigation**: Modular compliance framework, automated checking, audit logging
-- **Status**: SOC2, GDPR, HIPAA, PCI-DSS, ISO27001 compliance checkers implemented
-
-### **Advanced Feature Complexity** 🆕 **NEW RISK**
-- **Risk**: Adding advanced features (multi-region replication, key rotation) increases system complexity
-- **Mitigation**: 
-  - Incremental implementation with thorough testing
-  - Feature flags for gradual rollout
-  - Comprehensive documentation and operational guides
-  - Backward compatibility maintenance
-
-### **LDAP Integration Security** 🆕 **NEW RISK**
-- **Risk**: LDAP integration introduces authentication security risks
-- **Mitigation**:
-  - LDAPS enforcement for secure communication
-  - Certificate validation and trust management
-  - Rate limiting and brute force protection
-  - Audit logging of all LDAP operations
-
-### **Cross-Region Data Consistency** 🆕 **NEW RISK**
-- **Risk**: Multi-region replication introduces data consistency challenges
-- **Mitigation**:
-  - Eventual consistency models with conflict resolution
-  - Comprehensive monitoring and alerting
-  - Data integrity verification mechanisms
-  - Rollback capabilities for failed replications
-
-## 📈 **Expected Benefits**
-
-### **Code Quality Benefits**
-- **Maintainability**: Easier to understand, modify, and extend code across all components
-- **Testability**: Higher test coverage with focused, isolated components
-- **Performance**: Better resource utilization and faster builds
-
-### **Ecosystem Benefits**
-- **Separation of Concerns**: Each component (CybS3, SwiftS3, CybKMS) has clear responsibilities
-- **Independent Scaling**: Components can be deployed and scaled independently
-- **Technology Flexibility**: Each component can evolve with different technology stacks
-- **Operational Resilience**: Failure in one component doesn't bring down the entire ecosystem
-
-### **Enterprise & Multi-Cloud Benefits** ✅ **ACHIEVED**
-- **Multi-Cloud Support**: 14+ cloud providers with unified API and real provider testing
-- **Advanced Security**: Multiple encryption algorithms with enterprise-grade key management
-- **Compliance Ready**: Automated compliance checking for major standards (SOC2, GDPR, HIPAA, etc.)
-- **Enterprise Authentication**: LDAP integration for directory-based authentication
-- **Audit & Monitoring**: Comprehensive audit trails and compliance reporting
-- **Production Ready**: Enterprise-grade features for mission-critical deployments
-
-### **Developer Experience Benefits**
-- **Faster Onboarding**: Smaller, focused codebases are easier to understand
-- **Parallel Development**: Teams can work on different components simultaneously
-- **Easier Testing**: Component isolation enables better testing strategies
-- **Future-Proof Architecture**: Clean interfaces support future enhancements
-
-### **Enterprise Benefits**
-- **Production Readiness**: CybKMS provides enterprise-grade key management
-- **Compliance Support**: Modular architecture supports regulatory requirements
-- **Operational Excellence**: Better monitoring, logging, and maintenance capabilities
-- **Scalability**: Support for high-throughput, multi-tenant deployments
-- **Cost Optimization**: Multi-cloud support enables provider choice and cost optimization
+- **Compilation Issues**: Recent fixes need thorough verification.
+- **Regression**: Refactoring storage and client logic poses regression risks.
+    - *Mitigation*: Comprehensive integration tests before merging.
+- **Complexity**: Multiple moving parts (CybS3, SwiftS3, CybKMS).
+    - *Mitigation*: Strict interface boundaries.
 
 ---
 
 ## 📋 **Current Status Summary** (February 2026)
 
-### **✅ Completed Achievements**
-- **Phase 3 Enterprise Features**: Multi-cloud support, advanced encryption, compliance framework, LDAP authentication
-- **IDrive Integration**: Complete S3-compatible integration with test infrastructure
-- **Enterprise Security**: SOC2/GDPR compliance checkers, audit logging, unified authentication
-- **Production Architecture**: Three-component ecosystem with clear separation of concerns
+### **✅ Completed**
+- **Legacy Cleanup**: Removed embedded CybKMS.
+- **Code Splits**: `Commands.swift` and `S3Controller.swift` are successfully refactored.
+- **Enterprise Features**: Multi-cloud, LDAP, Compliance, Encryption are ready.
 
-### **🔧 Immediate Priorities (Week 1-2)**
-- **Fix Compilation Issues**: Resolve CybKMSClient duplicates, protocol conformances, type imports
-- **Validate Multi-Cloud**: Test IDrive integration with real credentials after fixes
-- **Clean Legacy Code**: Remove embedded CybKMS service from SwiftS3
-- **Integration Testing**: End-to-end ecosystem validation
+### **🔄 In Progress**
+- **Storage Refactoring**: `FileSystemStorage.swift` is the next major target for splitting.
+- **Client Refactoring**: `S3Client.swift` needs similar treatment.
 
-### **🎯 Future Enhancements (Month 4-6)**
-- **Additional Cloud Providers**: GCP and Azure native client implementations
-- **Advanced LDAP Features**: Group-based authentication and LDAPS support
-- **Key Rotation Automation**: Automated key lifecycle management policies
-- **Multi-Region Replication**: Cross-region data synchronization and failover
-- **Advanced Compliance**: Custom compliance frameworks and real-time monitoring
-
-### **📈 Next Steps**
-- **Phase 0 Cleanup**: Ecosystem cleanup and compilation fixes (Current)
-- **Remaining Work**: Address compilation issues and validate core functionality
-- **Phase 1 Refactoring**: Split massive files into focused components
-- **Phase 2 Architecture**: Implement command handlers and service patterns
-- **Advanced Features**: Develop GCP/Azure clients, key rotation, multi-region replication
-
-This roadmap will transform CybouS3 from a monolithic codebase into a maintainable, scalable enterprise solution with a clean three-component ecosystem architecture and production-ready multi-cloud capabilities.
+### **🎯 Next Steps**
+1.  **Extract Encryption/Integrity from Storage**: Reduce `FileSystemStorage` size.
+2.  **Split S3Client**: creating `CybS3Lib/Network` module.
+3.  **Verify CybKMS Integration**: Ensure the new `CybKMSClient` structure works flawlessly with SwiftS3.
