@@ -34,7 +34,7 @@ struct StressTests {
             threadPool: threadPool
         )
 
-        let storage = FileSystemStorage(rootPath: storagePath, metadataStore: metadataStore, testMode: true)
+        let storage = try await FileSystemStorage(rootPath: storagePath, metadataStore: metadataStore, testMode: true)
         let controller = S3Controller(storage: storage)
 
         let router = Router(context: S3RequestContext.self)

@@ -12,7 +12,7 @@ final class FileSystemStorageTests: XCTestCase {
 
     override func setUp() async throws {
         tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).path
-        storage = FileSystemStorage(rootPath: tempDir)
+        storage = try await FileSystemStorage(rootPath: tempDir)
     }
 
     override func tearDown() async throws {

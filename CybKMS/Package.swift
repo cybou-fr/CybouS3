@@ -4,13 +4,14 @@
 import PackageDescription
 
 let package = Package(
-    name: "SwiftS3",
+    name: "CybKMS",
     platforms: [
         .macOS(.v14),
         .iOS(.v17)
     ],
     products: [
-        .executable(name: "SwiftS3", targets: ["SwiftS3"])
+        .executable(name: "CybKMS", targets: ["CybKMS"]),
+        .library(name: "CybKMSClient", targets: ["CybKMSClient"])
     ],
     dependencies: [
         .package(url: "https://github.com/hummingbird-project/hummingbird.git", from: "2.0.0"),
@@ -20,13 +21,10 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-nio.git", from: "2.63.0"),
         .package(url: "https://github.com/apple/swift-log.git", from: "1.5.0"),
         .package(url: "https://github.com/swift-server/async-http-client.git", from: "1.21.0"),
-        .package(path: "../CybKMS"),
     ],
     targets: [
-        // Targets are the basic building blocks of a package, defining a module or a test suite.
-        // Targets can depend on other targets in this package and products from dependencies.
         .executableTarget(
-            name: "SwiftS3",
+            name: "CybKMS",
             dependencies: [
                 .product(name: "Hummingbird", package: "hummingbird"),
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
@@ -35,13 +33,20 @@ let package = Package(
                 .product(name: "_NIOFileSystem", package: "swift-nio"),
                 .product(name: "Logging", package: "swift-log"),
                 .product(name: "AsyncHTTPClient", package: "async-http-client"),
-                .product(name: "CybKMSClient", package: "CybKMS"),
+            ]
+        ),
+        .target(
+            name: "CybKMSClient",
+            path: "CybKMSClient",
+            dependencies: [
+                .product(name: "AsyncHTTPClient", package: "async-http-client"),
             ]
         ),
         .testTarget(
-            name: "SwiftS3Tests",
+            name: "CybKMSTests",
             dependencies: [
-                .target(name: "SwiftS3"),
+                .target(name: "CybKMS"),
+                .target(name: "CybKMSClient"),
                 .product(name: "HummingbirdTesting", package: "hummingbird"),
                 .product(name: "SQLiteNIO", package: "sqlite-nio"),
             ]

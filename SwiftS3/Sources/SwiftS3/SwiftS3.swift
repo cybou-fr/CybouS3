@@ -51,6 +51,9 @@ struct ServerCommand: AsyncParsableCommand {
     @Option(name: .customLong("ldap-bind-password"), help: "LDAP bind password")
     var ldapBindPassword: String?
 
+    @Option(name: .customLong("cyb-kms-endpoint"), help: "CybKMS server endpoint (e.g., http://localhost:8081)")
+    var cybKMSEndpoint: String?
+
     /// Starts the SwiftS3 server with the configured options.
     /// Initializes storage, metadata store, and starts the HTTP server.
     /// Runs until interrupted or an error occurs.
@@ -77,7 +80,8 @@ struct ServerCommand: AsyncParsableCommand {
                     bindDN: ldapBindDN ?? "",
                     bindPassword: ldapBindPassword ?? ""
                 )
-            }
+            },
+            cybKMSEndpoint: cybKMSEndpoint
         )
         try await server.run()
     }

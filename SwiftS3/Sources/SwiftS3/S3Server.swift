@@ -20,6 +20,7 @@ struct S3Server {
     let accessKey: String
     let secretKey: String
     let ldapConfig: LDAPConfig?
+    let cybKMSEndpoint: String?
 
     /// Starts the S3 server with the configured settings.
     func run() async throws {
@@ -41,7 +42,7 @@ struct S3Server {
         try? FileManager.default.createDirectory(
             atPath: storagePath, withIntermediateDirectories: true)
 
-        let storage = FileSystemStorage(rootPath: storagePath, metadataStore: metadataStore)
+        let storage = try await FileSystemStorage(rootPath: storagePath, metadataStore: metadataStore, cybKMSEndpoint: cybKMSEndpoint)
         let userStore = LDAPUserStore(localStore: metadataStore, ldapConfig: ldapConfig)
         let controller = S3Controller(storage: storage)
 

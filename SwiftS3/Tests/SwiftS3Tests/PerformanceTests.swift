@@ -34,7 +34,7 @@ struct PerformanceTests {
             threadPool: threadPool
         )
 
-        let storage = FileSystemStorage(rootPath: storagePath, metadataStore: metadataStore, testMode: true)
+        let storage = try await FileSystemStorage(rootPath: storagePath, metadataStore: metadataStore, testMode: true)
         let controller = S3Controller(storage: storage)
 
         let router = Router(context: S3RequestContext.self)
@@ -377,7 +377,7 @@ struct PerformanceTests {
     @Test("Benchmark Storage Backend Operations")
     func benchmarkStorageBackendOperations() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).path
-        let storage = FileSystemStorage(rootPath: root, testMode: true)
+        let storage = try await FileSystemStorage(rootPath: root, testMode: true)
         
         do {
             try await storage.createBucket(name: "bench-storage-bucket", owner: "test-owner")

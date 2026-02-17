@@ -37,7 +37,7 @@ final class SQLStorageTests: XCTestCase {
             )
 
             if let store = metadataStore {
-                let storage = FileSystemStorage(rootPath: root, metadataStore: store, testMode: true)
+                let storage = try await FileSystemStorage(rootPath: root, metadataStore: store, testMode: true)
                 try await test(storage)
                 try await storage.shutdown()
                 try await store.shutdown()

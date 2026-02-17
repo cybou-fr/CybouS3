@@ -101,6 +101,7 @@ public enum LegalHoldStatus: String, Codable, Sendable {
 public enum ServerSideEncryption: String, Codable, Sendable {
     case aes256 = "AES256"
     case awsKms = "aws:kms"
+    case cybKms = "cyb:kms"
 }
 
 /// Server-side encryption configuration for objects.
