@@ -245,10 +245,42 @@ public class MockPerformanceTestingService: PerformanceTestingServiceProtocol {
         format: "json"
     ))
 
+    public var compressionBenchmarkResult: Result<CompressionBenchmarkResult, Error> = .success(CompressionBenchmarkResult(
+        success: true,
+        results: [
+            CompressionBenchmarkItem(
+                algorithm: "gzip",
+                dataPattern: "random",
+                dataSize: 1024 * 1024,
+                compressionRatio: 2.5,
+                compressionThroughput: 150.0,
+                decompressionThroughput: 200.0,
+                encryptionThroughput: 0,
+                decryptionThroughput: 0,
+                totalTime: 0.5,
+                error: nil
+            )
+        ],
+        summary: CompressionBenchmarkSummary(
+            bestCompressionAlgorithm: "gzip",
+            bestCompressionRatio: 2.5,
+            fastestCompressionAlgorithm: "gzip",
+            fastestCompressionThroughput: 150.0,
+            bestEncryptionAlgorithm: "AES-GCM",
+            fastestEncryptionThroughput: 120.0,
+            recommendations: ["Use gzip for balanced compression and speed"]
+        ),
+        errorMessage: nil
+    ))
+
     public init() {}
 
     public func runBenchmark(config: BenchmarkConfig) async throws -> BenchmarkResult {
         try benchmarkResult.get()
+    }
+
+    public func runCompressionBenchmark(config: CompressionBenchmarkConfig) async throws -> CompressionBenchmarkResult {
+        try compressionBenchmarkResult.get()
     }
 
     public func checkRegression() async throws -> RegressionResult {

@@ -7,7 +7,7 @@ struct PerformanceCommands: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "performance",
         abstract: "Run performance benchmarks and regression detection",
-        subcommands: [Benchmark.self, Regression.self]
+        subcommands: [Benchmark.self, Compression.self, Regression.self]
     )
 
     struct Benchmark: AsyncParsableCommand {
@@ -161,6 +161,92 @@ struct PerformanceCommands: AsyncParsableCommand {
             print("   Duration: \(String(format: "%.2f", elapsed))s")
             print("   Ops/sec: \(String(format: "%.2f", opsPerSecond))")
             print("   Throughput: \(String(format: "%.2f", throughput)) KB/s")
+        }
+    }
+
+    struct Compression: AsyncParsableCommand {
+        static let configuration = CommandConfiguration(
+            commandName: "compression",
+            abstract: "Run compression and encryption performance benchmarks"
+        )
+
+        @Option(name: .long, help: "Test data size in MB")
+        var dataSize: Int = 10
+
+        @Option(name: .long, help: "Number of benchmark iterations")
+        var iterations: Int = 3
+
+        @Flag(name: .long, help: "Include encryption benchmarks")
+        var includeEncryption: Bool = true
+
+        @Flag(name: .long, help: "Include combined compression+encryption benchmarks")
+        var includeCombined: Bool = true
+
+        @Option(name: .long, help: "Data type for testing (random, text, binary)")
+        var dataType: String = "random"
+
+        func run() async throws {
+            print("🗜️  Running compression and encryption benchmarks...")
+            print("   Data size: \(dataSize)MB")
+            print("   Iterations: \(iterations)")
+            print("   Data type: \(dataType)")
+            print("   Include encryption: \(includeEncryption)")
+            print("   Include combined: \(includeCombined)")
+
+            let service = DefaultPerformanceTestingService()
+            let handler = RunCompressionBenchmarkHandler(service: service)
+
+            // Build algorithms list based on flags
+            var algorithms = ["gzip", "bzip2", "xz"]
+            if includeEncryption {
+                algorithms.append(contentsOf: ["aes-gcm", "chacha20"])
+            }
+            if includeCombined {
+                algorithms.append("combined")
+            }
+
+            let config = CompressionBenchmarkConfig(
+                dataSizes: [dataSize * 1024 * 1024], // Convert MB to bytes
+                iterations: iterations,
+                algorithms: algorithms,
+                dataPatterns: [dataType]
+            )
+
+            let input = RunCompressionBenchmarkInput(config: config)
+            let output = try await handler.handle(input: input)
+
+            if output.result.success {
+                print("\n✅ Compression benchmark complete")
+                print("📊 Results:")
+
+                if let results = output.result.results {
+                    for result in results {
+                        print("\n🔧 Algorithm: \(result.algorithm)")
+                        print("   📏 Compression Ratio: \(String(format: "%.3f", result.compressionRatio ?? 0))x")
+                        print("   ⚡ Compression Throughput: \(String(format: "%.2f", result.compressionThroughput)) MB/s")
+                        print("   📤 Decompression Throughput: \(String(format: "%.2f", result.decompressionThroughput)) MB/s")
+
+                        if result.encryptionThroughput > 0 {
+                            print("   🔐 Encryption Throughput: \(String(format: "%.2f", result.encryptionThroughput)) MB/s")
+                        }
+
+                        if result.decryptionThroughput > 0 {
+                            print("   🔓 Decryption Throughput: \(String(format: "%.2f", result.decryptionThroughput)) MB/s")
+                        }
+
+                        print("   ⏱️  Average Time: \(String(format: "%.3f", result.totalTime))s")
+                    }
+                }
+
+                if let summary = output.result.summary {
+                    print("\n📋 Summary:")
+                    print("   🏆 Best Compression: \(summary.bestCompressionAlgorithm) (\(String(format: "%.3f", summary.bestCompressionRatio))x)")
+                    print("   🚀 Fastest Compression: \(summary.fastestCompressionAlgorithm) (\(String(format: "%.2f", summary.fastestCompressionThroughput)) MB/s)")
+                    print("   💡 Recommendation: \(summary.recommendation)")
+                }
+            } else {
+                print("❌ Benchmark failed: \(output.result.errorMessage ?? "Unknown error")")
+            }
         }
     }
 

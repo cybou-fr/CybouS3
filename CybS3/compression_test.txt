@@ -1,0 +1,751 @@
+warning: 'cybs3': the target name CybS3 has different case on the filesystem and the Package.swift manifest file
+Building for debugging...
+[0/4] Write swift-version--58304C5D6DBC2206.txt
+error: emit-module command failed with exit code 1 (use -v to see invocation)
+[2/7] Emitting module CybS3Lib
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/PerformanceHandlers.swift:1:8: [1;33mwarning: [1;39mfile 'PerformanceHandlers.swift' is part of module 'CybS3Lib'; ignoring import[0;0m
+  [0;36m1 |[0;0m import CybS3Lib
+    [0;36m|[0;0m        `- [1;33mwarning: [1;39mfile 'PerformanceHandlers.swift' is part of module 'CybS3Lib'; ignoring import[0;0m
+  [0;36m2 |[0;0m import Foundation
+  [0;36m3 |[0;0m 
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/ServerHandlers.swift:2:8: [1;33mwarning: [1;39mfile 'ServerHandlers.swift' is part of module 'CybS3Lib'; ignoring import[0;0m
+  [0;36m1 |[0;0m import AsyncHTTPClient
+  [0;36m2 |[0;0m import CybS3Lib
+    [0;36m|[0;0m        `- [1;33mwarning: [1;39mfile 'ServerHandlers.swift' is part of module 'CybS3Lib'; ignoring import[0;0m
+  [0;36m3 |[0;0m import Foundation
+  [0;36m4 |[0;0m import NIOCore
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/UnifiedAuthService.swift:2:8: [1;33mwarning: [1;39mfile 'UnifiedAuthService.swift' is part of module 'CybS3Lib'; ignoring import[0;0m
+  [0;36m1 |[0;0m import Foundation
+  [0;36m2 |[0;0m import CybS3Lib
+    [0;36m|[0;0m        `- [1;33mwarning: [1;39mfile 'UnifiedAuthService.swift' is part of module 'CybS3Lib'; ignoring import[0;0m
+  [0;36m3 |[0;0m 
+  [0;36m4 |[0;0m /// Service for unified authentication between CybS3 and SwiftS3
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupManager.swift:147:27: [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+[0;36m145 |[0;0m     /// Creates a new backup configuration.
+[0;36m146 |[0;0m     public func createConfiguration(_ config: BackupConfiguration) async throws {
+[0;36m147 |[0;0m         try await [4;39mstorage.storeConfiguration(config)[0;0m
+    [0;36m|[0;0m                           |- [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+    [0;36m|[0;0m                           `- [1;39mnote: [1;39msending 'self'-isolated 'self.storage' to nonisolated instance method 'storeConfiguration' risks causing data races between nonisolated and 'self'-isolated uses[0;0m
+[0;36m148 |[0;0m 
+[0;36m149 |[0;0m         try await auditLogger.store(entry: AuditLogEntry(
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupManager.swift:168:27: [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+[0;36m166 |[0;0m     /// Updates an existing backup configuration.
+[0;36m167 |[0;0m     public func updateConfiguration(_ config: BackupConfiguration) async throws {
+[0;36m168 |[0;0m         try await [4;39mstorage.storeConfiguration(config)[0;0m
+    [0;36m|[0;0m                           |- [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+    [0;36m|[0;0m                           `- [1;39mnote: [1;39msending 'self'-isolated 'self.storage' to nonisolated instance method 'storeConfiguration' risks causing data races between nonisolated and 'self'-isolated uses[0;0m
+[0;36m169 |[0;0m 
+[0;36m170 |[0;0m         try await auditLogger.store(entry: AuditLogEntry(
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupManager.swift:184:27: [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+[0;36m182 |[0;0m     /// Deletes a backup configuration.
+[0;36m183 |[0;0m     public func deleteConfiguration(id: String) async throws {
+[0;36m184 |[0;0m         try await [4;39mstorage.deleteConfiguration(id: id)[0;0m
+    [0;36m|[0;0m                           |- [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+    [0;36m|[0;0m                           `- [1;39mnote: [1;39msending 'self'-isolated 'self.storage' to nonisolated instance method 'deleteConfiguration(id:)' risks causing data races between nonisolated and 'self'-isolated uses[0;0m
+[0;36m185 |[0;0m 
+[0;36m186 |[0;0m         try await auditLogger.store(entry: AuditLogEntry(
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupManager.swift:205:46: [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+[0;36m203 |[0;0m     /// Starts a backup job for the given configuration.
+[0;36m204 |[0;0m     public func startBackup(configurationId: String) async throws -> String {
+[0;36m205 |[0;0m         guard let config = try await [4;39mstorage.getConfiguration(id: configurationId)[0;0m else {
+    [0;36m|[0;0m                                              |- [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+    [0;36m|[0;0m                                              `- [1;39mnote: [1;39msending 'self'-isolated 'self.storage' to nonisolated instance method 'getConfiguration(id:)' risks causing data races between nonisolated and 'self'-isolated uses[0;0m
+[0;36m206 |[0;0m             throw BackupError.configurationNotFound(configurationId)
+[0;36m207 |[0;0m         }
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupManager.swift:210:27: [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+[0;36m208 |[0;0m 
+[0;36m209 |[0;0m         let job = BackupJob(configurationId: configurationId)
+[0;36m210 |[0;0m         try await [4;39mstorage.storeJob(job)[0;0m
+    [0;36m|[0;0m                           |- [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+    [0;36m|[0;0m                           `- [1;39mnote: [1;39msending 'self'-isolated 'self.storage' to nonisolated instance method 'storeJob' risks causing data races between nonisolated and 'self'-isolated uses[0;0m
+[0;36m211 |[0;0m 
+[0;36m212 |[0;0m         let task = Task {
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupManager.swift:315:27: [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+[0;36m313 |[0;0m         var updatedJob = job
+[0;36m314 |[0;0m         updatedJob.status = .running
+[0;36m315 |[0;0m         try await [4;39mstorage.updateJob(updatedJob)[0;0m
+    [0;36m|[0;0m                           |- [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+    [0;36m|[0;0m                           `- [1;39mnote: [1;39msending 'self'-isolated 'self.storage' to nonisolated instance method 'updateJob' risks causing data races between nonisolated and 'self'-isolated uses[0;0m
+[0;36m316 |[0;0m 
+[0;36m317 |[0;0m         let startTime = Date()
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupManager.swift:339:31: [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+[0;36m337 |[0;0m             updatedJob.progress.objectsTotal = objects.count
+[0;36m338 |[0;0m             updatedJob.progress.bytesTotal = objects.reduce(0) { $0 + $1.size }
+[0;36m339 |[0;0m             try await [4;39mstorage.updateJob(updatedJob)[0;0m
+    [0;36m|[0;0m                               |- [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+    [0;36m|[0;0m                               `- [1;39mnote: [1;39msending 'self'-isolated 'self.storage' to nonisolated instance method 'updateJob' risks causing data races between nonisolated and 'self'-isolated uses[0;0m
+[0;36m340 |[0;0m 
+[0;36m341 |[0;0m             // Backup objects
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupManager.swift:393:35: [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+[0;36m391 |[0;0m                 updatedJob.progress.bytesProcessed = backedUpObjects.reduce(0) { $0 + $1.size }
+[0;36m392 |[0;0m                 updatedJob.progress.currentOperation = "Backing up \(object.key)"
+[0;36m393 |[0;0m                 try await [4;39mstorage.updateJob(updatedJob)[0;0m
+    [0;36m|[0;0m                                   |- [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+    [0;36m|[0;0m                                   `- [1;39mnote: [1;39msending 'self'-isolated 'self.storage' to nonisolated instance method 'updateJob' risks causing data races between nonisolated and 'self'-isolated uses[0;0m
+[0;36m394 |[0;0m             }
+[0;36m395 |[0;0m 
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupManager.swift:415:31: [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+[0;36m413 |[0;0m             )
+[0;36m414 |[0;0m 
+[0;36m415 |[0;0m             try await [4;39mstorage.storeManifest(manifest)[0;0m
+    [0;36m|[0;0m                               |- [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+    [0;36m|[0;0m                               `- [1;39mnote: [1;39msending 'self'-isolated 'self.storage' to nonisolated instance method 'storeManifest' risks causing data races between nonisolated and 'self'-isolated uses[0;0m
+[0;36m416 |[0;0m 
+[0;36m417 |[0;0m             // Complete the job
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupManager.swift:422:31: [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+[0;36m420 |[0;0m             updatedJob.progress.objectsProcessed = objects.count
+[0;36m421 |[0;0m             updatedJob.progress.bytesProcessed = updatedJob.progress.bytesTotal
+[0;36m422 |[0;0m             try await [4;39mstorage.updateJob(updatedJob)[0;0m
+    [0;36m|[0;0m                               |- [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+    [0;36m|[0;0m                               `- [1;39mnote: [1;39msending 'self'-isolated 'self.storage' to nonisolated instance method 'updateJob' risks causing data races between nonisolated and 'self'-isolated uses[0;0m
+[0;36m423 |[0;0m 
+[0;36m424 |[0;0m             try await auditLogger.store(entry: AuditLogEntry(
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupManager.swift:444:31: [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+[0;36m442 |[0;0m             updatedJob.completedAt = Date()
+[0;36m443 |[0;0m             updatedJob.errorMessage = error.localizedDescription
+[0;36m444 |[0;0m             try await [4;39mstorage.updateJob(updatedJob)[0;0m
+    [0;36m|[0;0m                               |- [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+    [0;36m|[0;0m                               `- [1;39mnote: [1;39msending 'self'-isolated 'self.storage' to nonisolated instance method 'updateJob' risks causing data races between nonisolated and 'self'-isolated uses[0;0m
+[0;36m445 |[0;0m             throw error
+[0;36m446 |[0;0m         }
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupManager.swift:221:35: [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+[0;36m219 |[0;0m                 failedJob.completedAt = Date()
+[0;36m220 |[0;0m                 failedJob.errorMessage = error.localizedDescription
+[0;36m221 |[0;0m                 try await [4;39mstorage.updateJob(failedJob)[0;0m
+    [0;36m|[0;0m                                   |- [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+    [0;36m|[0;0m                                   `- [1;39mnote: [1;39msending 'self'-isolated 'self.storage' to nonisolated instance method 'updateJob' risks causing data races between nonisolated and 'self'-isolated uses[0;0m
+[0;36m222 |[0;0m 
+[0;36m223 |[0;0m                 try await auditLogger.store(entry: AuditLogEntry(
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupManager.swift:262:44: [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+[0;36m260 |[0;0m             activeJobs.removeValue(forKey: jobId)
+[0;36m261 |[0;0m 
+[0;36m262 |[0;0m             if var job = try await [4;39mstorage.getJob(id: jobId)[0;0m {
+    [0;36m|[0;0m                                            |- [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+    [0;36m|[0;0m                                            `- [1;39mnote: [1;39msending 'self'-isolated 'self.storage' to nonisolated instance method 'getJob(id:)' risks causing data races between nonisolated and 'self'-isolated uses[0;0m
+[0;36m263 |[0;0m                 job.status = .cancelled
+[0;36m264 |[0;0m                 job.completedAt = Date()
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupManager.swift:265:35: [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+[0;36m263 |[0;0m                 job.status = .cancelled
+[0;36m264 |[0;0m                 job.completedAt = Date()
+[0;36m265 |[0;0m                 try await [4;39mstorage.updateJob(job)[0;0m
+    [0;36m|[0;0m                                   |- [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+    [0;36m|[0;0m                                   `- [1;39mnote: [1;39msending 'self'-isolated 'self.storage' to nonisolated instance method 'updateJob' risks causing data races between nonisolated and 'self'-isolated uses[0;0m
+[0;36m266 |[0;0m             }
+[0;36m267 |[0;0m 
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupManager.swift:514:38: [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+[0;36m512 |[0;0m 
+[0;36m513 |[0;0m     private func cleanupConfigurationBackups(_ config: BackupConfiguration) async throws {
+[0;36m514 |[0;0m         let jobs = try await [4;39mstorage.listJobs(for: config.id)[0;0m
+    [0;36m|[0;0m                                      |- [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+    [0;36m|[0;0m                                      `- [1;39mnote: [1;39msending 'self'-isolated 'self.storage' to nonisolated instance method 'listJobs(for:)' risks causing data races between nonisolated and 'self'-isolated uses[0;0m
+[0;36m515 |[0;0m         let completedJobs = jobs.filter { $0.status == BackupStatus.completed }
+[0;36m516 |[0;0m 
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupManager.swift:537:31: [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+[0;36m535 |[0;0m         // Delete old jobs and their manifests
+[0;36m536 |[0;0m         for job in jobsToDelete {
+[0;36m537 |[0;0m             try await [4;39mstorage.deleteJob(id: job.id)[0;0m
+    [0;36m|[0;0m                               |- [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+    [0;36m|[0;0m                               `- [1;39mnote: [1;39msending 'self'-isolated 'self.storage' to nonisolated instance method 'deleteJob(id:)' risks causing data races between nonisolated and 'self'-isolated uses[0;0m
+[0;36m538 |[0;0m 
+[0;36m539 |[0;0m             // In a real implementation, we would also delete the actual backup files
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupManager.swift:293:48: [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+[0;36m291 |[0;0m     /// Cleans up old backups based on retention policies.
+[0;36m292 |[0;0m     public func cleanupOldBackups() async throws {
+[0;36m293 |[0;0m         let configurations = try await [4;39mstorage.listConfigurations()[0;0m
+    [0;36m|[0;0m                                                |- [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+    [0;36m|[0;0m                                                `- [1;39mnote: [1;39msending 'self'-isolated 'self.storage' to nonisolated instance method 'listConfigurations()' risks causing data races between nonisolated and 'self'-isolated uses[0;0m
+[0;36m294 |[0;0m 
+[0;36m295 |[0;0m         for config in configurations where config.isEnabled {
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupServices.swift:144:46: [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+[0;36m142 |[0;0m     public func startBackup(configurationId: String) async throws -> String {
+[0;36m143 |[0;0m         // Get configuration
+[0;36m144 |[0;0m         guard let config = try await [4;39mstorage.getConfiguration(id: configurationId)[0;0m else {
+    [0;36m|[0;0m                                              |- [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+    [0;36m|[0;0m                                              `- [1;39mnote: [1;39msending 'self'-isolated 'self.storage' to nonisolated instance method 'getConfiguration(id:)' risks causing data races between nonisolated and 'self'-isolated uses[0;0m
+[0;36m145 |[0;0m             throw BackupError.configurationNotFound(configurationId)
+[0;36m146 |[0;0m         }
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupServices.swift:149:46: [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+[0;36m147 |[0;0m 
+[0;36m148 |[0;0m         // Check for existing active jobs
+[0;36m149 |[0;0m         let existingJobs = try await [4;39mstorage.listJobs(for: configurationId)[0;0m
+    [0;36m|[0;0m                                              |- [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+    [0;36m|[0;0m                                              `- [1;39mnote: [1;39msending 'self'-isolated 'self.storage' to nonisolated instance method 'listJobs(for:)' risks causing data races between nonisolated and 'self'-isolated uses[0;0m
+[0;36m150 |[0;0m         let runningJobs = existingJobs.filter { $0.status == .running || $0.status == .pending }
+[0;36m151 |[0;0m 
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupServices.swift:165:27: [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+[0;36m163 |[0;0m         )
+[0;36m164 |[0;0m 
+[0;36m165 |[0;0m         try await [4;39mstorage.storeJob(job)[0;0m
+    [0;36m|[0;0m                           |- [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+    [0;36m|[0;0m                           `- [1;39mnote: [1;39msending 'self'-isolated 'self.storage' to nonisolated instance method 'storeJob' risks causing data races between nonisolated and 'self'-isolated uses[0;0m
+[0;36m166 |[0;0m 
+[0;36m167 |[0;0m         // Start backup task
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupServices.swift:250:27: [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+[0;36m248 |[0;0m         var updatedJob = job
+[0;36m249 |[0;0m         updatedJob.status = .running
+[0;36m250 |[0;0m         try await [4;39mstorage.updateJob(updatedJob)[0;0m
+    [0;36m|[0;0m                           |- [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+    [0;36m|[0;0m                           `- [1;39mnote: [1;39msending 'self'-isolated 'self.storage' to nonisolated instance method 'updateJob' risks causing data races between nonisolated and 'self'-isolated uses[0;0m
+[0;36m251 |[0;0m 
+[0;36m252 |[0;0m         defer {
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupServices.swift:277:31: [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+[0;36m275 |[0;0m             updatedJob.progress.objectsTotal = objects.count
+[0;36m276 |[0;0m             updatedJob.progress.bytesTotal = objects.reduce(0) { $0 + $1.size }
+[0;36m277 |[0;0m             try await [4;39mstorage.updateJob(updatedJob)[0;0m
+    [0;36m|[0;0m                               |- [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+    [0;36m|[0;0m                               `- [1;39mnote: [1;39msending 'self'-isolated 'self.storage' to nonisolated instance method 'updateJob' risks causing data races between nonisolated and 'self'-isolated uses[0;0m
+[0;36m278 |[0;0m 
+[0;36m279 |[0;0m             // Backup objects
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupServices.swift:316:39: [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+[0;36m314 |[0;0m                     updatedJob.progress.objectsProcessed = index + 1
+[0;36m315 |[0;0m                     updatedJob.progress.bytesProcessed += object.size
+[0;36m316 |[0;0m                     try await [4;39mstorage.updateJob(updatedJob)[0;0m
+    [0;36m|[0;0m                                       |- [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+    [0;36m|[0;0m                                       `- [1;39mnote: [1;39msending 'self'-isolated 'self.storage' to nonisolated instance method 'updateJob' risks causing data races between nonisolated and 'self'-isolated uses[0;0m
+[0;36m317 |[0;0m 
+[0;36m318 |[0;0m                 } catch {
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupServices.swift:359:31: [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+[0;36m357 |[0;0m             )
+[0;36m358 |[0;0m 
+[0;36m359 |[0;0m             try await [4;39mstorage.storeManifest(manifest)[0;0m
+    [0;36m|[0;0m                               |- [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+    [0;36m|[0;0m                               `- [1;39mnote: [1;39msending 'self'-isolated 'self.storage' to nonisolated instance method 'storeManifest' risks causing data races between nonisolated and 'self'-isolated uses[0;0m
+[0;36m360 |[0;0m 
+[0;36m361 |[0;0m             // Update job as completed
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupServices.swift:366:31: [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+[0;36m364 |[0;0m             updatedJob.progress.objectsProcessed = backedUpObjects.count
+[0;36m365 |[0;0m             updatedJob.progress.bytesProcessed = backedUpObjects.reduce(0) { $0 + $1.size }
+[0;36m366 |[0;0m             try await [4;39mstorage.updateJob(updatedJob)[0;0m
+    [0;36m|[0;0m                               |- [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+    [0;36m|[0;0m                               `- [1;39mnote: [1;39msending 'self'-isolated 'self.storage' to nonisolated instance method 'updateJob' risks causing data races between nonisolated and 'self'-isolated uses[0;0m
+[0;36m367 |[0;0m 
+[0;36m368 |[0;0m             try await auditLogger.store(entry: AuditLogEntry(
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupServices.swift:390:31: [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+[0;36m388 |[0;0m             failedJob.completedAt = Date()
+[0;36m389 |[0;0m             failedJob.errorMessage = error.localizedDescription
+[0;36m390 |[0;0m             try await [4;39mstorage.updateJob(failedJob)[0;0m
+    [0;36m|[0;0m                               |- [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+    [0;36m|[0;0m                               `- [1;39mnote: [1;39msending 'self'-isolated 'self.storage' to nonisolated instance method 'updateJob' risks causing data races between nonisolated and 'self'-isolated uses[0;0m
+[0;36m391 |[0;0m 
+[0;36m392 |[0;0m             throw error
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupServices.swift:177:35: [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+[0;36m175 |[0;0m                 failedJob.completedAt = Date()
+[0;36m176 |[0;0m                 failedJob.errorMessage = error.localizedDescription
+[0;36m177 |[0;0m                 try await [4;39mstorage.updateJob(failedJob)[0;0m
+    [0;36m|[0;0m                                   |- [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+    [0;36m|[0;0m                                   `- [1;39mnote: [1;39msending 'self'-isolated 'self.storage' to nonisolated instance method 'updateJob' risks causing data races between nonisolated and 'self'-isolated uses[0;0m
+[0;36m178 |[0;0m 
+[0;36m179 |[0;0m                 try await auditLogger.store(entry: AuditLogEntry(
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupServices.swift:217:44: [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+[0;36m215 |[0;0m             activeJobs.removeValue(forKey: jobId)
+[0;36m216 |[0;0m 
+[0;36m217 |[0;0m             if var job = try await [4;39mstorage.getJob(id: jobId)[0;0m {
+    [0;36m|[0;0m                                            |- [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+    [0;36m|[0;0m                                            `- [1;39mnote: [1;39msending 'self'-isolated 'self.storage' to nonisolated instance method 'getJob(id:)' risks causing data races between nonisolated and 'self'-isolated uses[0;0m
+[0;36m218 |[0;0m                 job.status = .cancelled
+[0;36m219 |[0;0m                 job.completedAt = Date()
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupServices.swift:220:35: [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+[0;36m218 |[0;0m                 job.status = .cancelled
+[0;36m219 |[0;0m                 job.completedAt = Date()
+[0;36m220 |[0;0m                 try await [4;39mstorage.updateJob(job)[0;0m
+    [0;36m|[0;0m                                   |- [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+    [0;36m|[0;0m                                   `- [1;39mnote: [1;39msending 'self'-isolated 'self.storage' to nonisolated instance method 'updateJob' risks causing data races between nonisolated and 'self'-isolated uses[0;0m
+[0;36m221 |[0;0m             }
+[0;36m222 |[0;0m 
+
+[#SendingRisksDataRace]: <https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race>
+[3/7] Compiling CybS3Lib BackupServices.swift
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupServices.swift:144:46: [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+[0;36m142 |[0;0m     public func startBackup(configurationId: String) async throws -> String {
+[0;36m143 |[0;0m         // Get configuration
+[0;36m144 |[0;0m         guard let config = try await [4;39mstorage.getConfiguration(id: configurationId)[0;0m else {
+    [0;36m|[0;0m                                              |- [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+    [0;36m|[0;0m                                              `- [1;39mnote: [1;39msending 'self'-isolated 'self.storage' to nonisolated instance method 'getConfiguration(id:)' risks causing data races between nonisolated and 'self'-isolated uses[0;0m
+[0;36m145 |[0;0m             throw BackupError.configurationNotFound(configurationId)
+[0;36m146 |[0;0m         }
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupServices.swift:149:46: [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+[0;36m147 |[0;0m 
+[0;36m148 |[0;0m         // Check for existing active jobs
+[0;36m149 |[0;0m         let existingJobs = try await [4;39mstorage.listJobs(for: configurationId)[0;0m
+    [0;36m|[0;0m                                              |- [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+    [0;36m|[0;0m                                              `- [1;39mnote: [1;39msending 'self'-isolated 'self.storage' to nonisolated instance method 'listJobs(for:)' risks causing data races between nonisolated and 'self'-isolated uses[0;0m
+[0;36m150 |[0;0m         let runningJobs = existingJobs.filter { $0.status == .running || $0.status == .pending }
+[0;36m151 |[0;0m 
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupServices.swift:165:27: [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+[0;36m163 |[0;0m         )
+[0;36m164 |[0;0m 
+[0;36m165 |[0;0m         try await [4;39mstorage.storeJob(job)[0;0m
+    [0;36m|[0;0m                           |- [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+    [0;36m|[0;0m                           `- [1;39mnote: [1;39msending 'self'-isolated 'self.storage' to nonisolated instance method 'storeJob' risks causing data races between nonisolated and 'self'-isolated uses[0;0m
+[0;36m166 |[0;0m 
+[0;36m167 |[0;0m         // Start backup task
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupServices.swift:250:27: [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+[0;36m248 |[0;0m         var updatedJob = job
+[0;36m249 |[0;0m         updatedJob.status = .running
+[0;36m250 |[0;0m         try await [4;39mstorage.updateJob(updatedJob)[0;0m
+    [0;36m|[0;0m                           |- [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+    [0;36m|[0;0m                           `- [1;39mnote: [1;39msending 'self'-isolated 'self.storage' to nonisolated instance method 'updateJob' risks causing data races between nonisolated and 'self'-isolated uses[0;0m
+[0;36m251 |[0;0m 
+[0;36m252 |[0;0m         defer {
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupServices.swift:277:31: [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+[0;36m275 |[0;0m             updatedJob.progress.objectsTotal = objects.count
+[0;36m276 |[0;0m             updatedJob.progress.bytesTotal = objects.reduce(0) { $0 + $1.size }
+[0;36m277 |[0;0m             try await [4;39mstorage.updateJob(updatedJob)[0;0m
+    [0;36m|[0;0m                               |- [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+    [0;36m|[0;0m                               `- [1;39mnote: [1;39msending 'self'-isolated 'self.storage' to nonisolated instance method 'updateJob' risks causing data races between nonisolated and 'self'-isolated uses[0;0m
+[0;36m278 |[0;0m 
+[0;36m279 |[0;0m             // Backup objects
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupServices.swift:316:39: [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+[0;36m314 |[0;0m                     updatedJob.progress.objectsProcessed = index + 1
+[0;36m315 |[0;0m                     updatedJob.progress.bytesProcessed += object.size
+[0;36m316 |[0;0m                     try await [4;39mstorage.updateJob(updatedJob)[0;0m
+    [0;36m|[0;0m                                       |- [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+    [0;36m|[0;0m                                       `- [1;39mnote: [1;39msending 'self'-isolated 'self.storage' to nonisolated instance method 'updateJob' risks causing data races between nonisolated and 'self'-isolated uses[0;0m
+[0;36m317 |[0;0m 
+[0;36m318 |[0;0m                 } catch {
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupServices.swift:359:31: [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+[0;36m357 |[0;0m             )
+[0;36m358 |[0;0m 
+[0;36m359 |[0;0m             try await [4;39mstorage.storeManifest(manifest)[0;0m
+    [0;36m|[0;0m                               |- [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+    [0;36m|[0;0m                               `- [1;39mnote: [1;39msending 'self'-isolated 'self.storage' to nonisolated instance method 'storeManifest' risks causing data races between nonisolated and 'self'-isolated uses[0;0m
+[0;36m360 |[0;0m 
+[0;36m361 |[0;0m             // Update job as completed
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupServices.swift:366:31: [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+[0;36m364 |[0;0m             updatedJob.progress.objectsProcessed = backedUpObjects.count
+[0;36m365 |[0;0m             updatedJob.progress.bytesProcessed = backedUpObjects.reduce(0) { $0 + $1.size }
+[0;36m366 |[0;0m             try await [4;39mstorage.updateJob(updatedJob)[0;0m
+    [0;36m|[0;0m                               |- [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+    [0;36m|[0;0m                               `- [1;39mnote: [1;39msending 'self'-isolated 'self.storage' to nonisolated instance method 'updateJob' risks causing data races between nonisolated and 'self'-isolated uses[0;0m
+[0;36m367 |[0;0m 
+[0;36m368 |[0;0m             try await auditLogger.store(entry: AuditLogEntry(
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupServices.swift:390:31: [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+[0;36m388 |[0;0m             failedJob.completedAt = Date()
+[0;36m389 |[0;0m             failedJob.errorMessage = error.localizedDescription
+[0;36m390 |[0;0m             try await [4;39mstorage.updateJob(failedJob)[0;0m
+    [0;36m|[0;0m                               |- [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+    [0;36m|[0;0m                               `- [1;39mnote: [1;39msending 'self'-isolated 'self.storage' to nonisolated instance method 'updateJob' risks causing data races between nonisolated and 'self'-isolated uses[0;0m
+[0;36m391 |[0;0m 
+[0;36m392 |[0;0m             throw error
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupServices.swift:177:35: [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+[0;36m175 |[0;0m                 failedJob.completedAt = Date()
+[0;36m176 |[0;0m                 failedJob.errorMessage = error.localizedDescription
+[0;36m177 |[0;0m                 try await [4;39mstorage.updateJob(failedJob)[0;0m
+    [0;36m|[0;0m                                   |- [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+    [0;36m|[0;0m                                   `- [1;39mnote: [1;39msending 'self'-isolated 'self.storage' to nonisolated instance method 'updateJob' risks causing data races between nonisolated and 'self'-isolated uses[0;0m
+[0;36m178 |[0;0m 
+[0;36m179 |[0;0m                 try await auditLogger.store(entry: AuditLogEntry(
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupServices.swift:217:44: [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+[0;36m215 |[0;0m             activeJobs.removeValue(forKey: jobId)
+[0;36m216 |[0;0m 
+[0;36m217 |[0;0m             if var job = try await [4;39mstorage.getJob(id: jobId)[0;0m {
+    [0;36m|[0;0m                                            |- [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+    [0;36m|[0;0m                                            `- [1;39mnote: [1;39msending 'self'-isolated 'self.storage' to nonisolated instance method 'getJob(id:)' risks causing data races between nonisolated and 'self'-isolated uses[0;0m
+[0;36m218 |[0;0m                 job.status = .cancelled
+[0;36m219 |[0;0m                 job.completedAt = Date()
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupServices.swift:220:35: [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+[0;36m218 |[0;0m                 job.status = .cancelled
+[0;36m219 |[0;0m                 job.completedAt = Date()
+[0;36m220 |[0;0m                 try await [4;39mstorage.updateJob(job)[0;0m
+    [0;36m|[0;0m                                   |- [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+    [0;36m|[0;0m                                   `- [1;39mnote: [1;39msending 'self'-isolated 'self.storage' to nonisolated instance method 'updateJob' risks causing data races between nonisolated and 'self'-isolated uses[0;0m
+[0;36m221 |[0;0m             }
+[0;36m222 |[0;0m 
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupServices.swift:237:27: [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+[0;36m235 |[0;0m 
+[0;36m236 |[0;0m     public func getJobStatus(jobId: String) async throws -> BackupJob? {
+[0;36m237 |[0;0m         try await [4;39mstorage.getJob(id: jobId)[0;0m
+    [0;36m|[0;0m                           |- [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+    [0;36m|[0;0m                           `- [1;39mnote: [1;39msending 'self'-isolated 'self.storage' to nonisolated instance method 'getJob(id:)' risks causing data races between nonisolated and 'self'-isolated uses[0;0m
+[0;36m238 |[0;0m     }
+[0;36m239 |[0;0m 
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupServices.swift:241:27: [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+[0;36m239 |[0;0m 
+[0;36m240 |[0;0m     public func listJobs(for configurationId: String) async throws -> [BackupJob] {
+[0;36m241 |[0;0m         try await [4;39mstorage.listJobs(for: configurationId)[0;0m
+    [0;36m|[0;0m                           |- [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+    [0;36m|[0;0m                           `- [1;39mnote: [1;39msending 'self'-isolated 'self.storage' to nonisolated instance method 'listJobs(for:)' risks causing data races between nonisolated and 'self'-isolated uses[0;0m
+[0;36m242 |[0;0m     }
+[0;36m243 |[0;0m 
+
+[#SendingRisksDataRace]: <https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race>
+[4/7] Compiling CybS3Lib BackupManager.swift
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupManager.swift:53:14: [1;31merror: [1;39minstance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead[0;0m
+ [0;36m51 |[0;0m 
+ [0;36m52 |[0;0m     public func storeConfiguration(_ config: BackupConfiguration) async throws {
+ [0;36m53 |[0;0m         lock.lock()
+    [0;36m|[0;0m              `- [1;31merror: [1;39minstance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead[0;0m
+ [0;36m54 |[0;0m         defer { lock.unlock() }
+ [0;36m55 |[0;0m         configurations[config.id] = config
+
+Foundation.NSLock.lock:2:11: [1;39mnote: [1;39m'lock()' declared here[0;0m
+[0;36m1 |[0;0m class NSLock {
+[0;36m2 |[0;0m open func lock()}
+  [0;36m|[0;0m           `- [1;39mnote: [1;39m'lock()' declared here[0;0m
+[0;36m3 |[0;0m 
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupManager.swift:54:22: [1;31merror: [1;39minstance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead[0;0m
+ [0;36m52 |[0;0m     public func storeConfiguration(_ config: BackupConfiguration) async throws {
+ [0;36m53 |[0;0m         lock.lock()
+ [0;36m54 |[0;0m         defer { lock.unlock() }
+    [0;36m|[0;0m                      `- [1;31merror: [1;39minstance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead[0;0m
+ [0;36m55 |[0;0m         configurations[config.id] = config
+ [0;36m56 |[0;0m     }
+
+Foundation.NSLock.unlock:2:11: [1;39mnote: [1;39m'unlock()' declared here[0;0m
+[0;36m1 |[0;0m class NSLock {
+[0;36m2 |[0;0m open func unlock()}
+  [0;36m|[0;0m           `- [1;39mnote: [1;39m'unlock()' declared here[0;0m
+[0;36m3 |[0;0m 
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupManager.swift:59:14: [1;31merror: [1;39minstance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead[0;0m
+ [0;36m57 |[0;0m 
+ [0;36m58 |[0;0m     public func getConfiguration(id: String) async throws -> BackupConfiguration? {
+ [0;36m59 |[0;0m         lock.lock()
+    [0;36m|[0;0m              `- [1;31merror: [1;39minstance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead[0;0m
+ [0;36m60 |[0;0m         defer { lock.unlock() }
+ [0;36m61 |[0;0m         return configurations[id]
+
+Foundation.NSLock.lock:2:11: [1;39mnote: [1;39m'lock()' declared here[0;0m
+[0;36m1 |[0;0m class NSLock {
+[0;36m2 |[0;0m open func lock()}
+  [0;36m|[0;0m           `- [1;39mnote: [1;39m'lock()' declared here[0;0m
+[0;36m3 |[0;0m 
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupManager.swift:60:22: [1;31merror: [1;39minstance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead[0;0m
+ [0;36m58 |[0;0m     public func getConfiguration(id: String) async throws -> BackupConfiguration? {
+ [0;36m59 |[0;0m         lock.lock()
+ [0;36m60 |[0;0m         defer { lock.unlock() }
+    [0;36m|[0;0m                      `- [1;31merror: [1;39minstance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead[0;0m
+ [0;36m61 |[0;0m         return configurations[id]
+ [0;36m62 |[0;0m     }
+
+Foundation.NSLock.unlock:2:11: [1;39mnote: [1;39m'unlock()' declared here[0;0m
+[0;36m1 |[0;0m class NSLock {
+[0;36m2 |[0;0m open func unlock()}
+  [0;36m|[0;0m           `- [1;39mnote: [1;39m'unlock()' declared here[0;0m
+[0;36m3 |[0;0m 
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupManager.swift:65:14: [1;31merror: [1;39minstance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead[0;0m
+ [0;36m63 |[0;0m 
+ [0;36m64 |[0;0m     public func listConfigurations() async throws -> [BackupConfiguration] {
+ [0;36m65 |[0;0m         lock.lock()
+    [0;36m|[0;0m              `- [1;31merror: [1;39minstance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead[0;0m
+ [0;36m66 |[0;0m         defer { lock.unlock() }
+ [0;36m67 |[0;0m         return Array(configurations.values)
+
+Foundation.NSLock.lock:2:11: [1;39mnote: [1;39m'lock()' declared here[0;0m
+[0;36m1 |[0;0m class NSLock {
+[0;36m2 |[0;0m open func lock()}
+  [0;36m|[0;0m           `- [1;39mnote: [1;39m'lock()' declared here[0;0m
+[0;36m3 |[0;0m 
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupManager.swift:66:22: [1;31merror: [1;39minstance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead[0;0m
+ [0;36m64 |[0;0m     public func listConfigurations() async throws -> [BackupConfiguration] {
+ [0;36m65 |[0;0m         lock.lock()
+ [0;36m66 |[0;0m         defer { lock.unlock() }
+    [0;36m|[0;0m                      `- [1;31merror: [1;39minstance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead[0;0m
+ [0;36m67 |[0;0m         return Array(configurations.values)
+ [0;36m68 |[0;0m     }
+
+Foundation.NSLock.unlock:2:11: [1;39mnote: [1;39m'unlock()' declared here[0;0m
+[0;36m1 |[0;0m class NSLock {
+[0;36m2 |[0;0m open func unlock()}
+  [0;36m|[0;0m           `- [1;39mnote: [1;39m'unlock()' declared here[0;0m
+[0;36m3 |[0;0m 
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupManager.swift:71:14: [1;31merror: [1;39minstance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead[0;0m
+ [0;36m69 |[0;0m 
+ [0;36m70 |[0;0m     public func deleteConfiguration(id: String) async throws {
+ [0;36m71 |[0;0m         lock.lock()
+    [0;36m|[0;0m              `- [1;31merror: [1;39minstance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead[0;0m
+ [0;36m72 |[0;0m         defer { lock.unlock() }
+ [0;36m73 |[0;0m         configurations.removeValue(forKey: id)
+
+Foundation.NSLock.lock:2:11: [1;39mnote: [1;39m'lock()' declared here[0;0m
+[0;36m1 |[0;0m class NSLock {
+[0;36m2 |[0;0m open func lock()}
+  [0;36m|[0;0m           `- [1;39mnote: [1;39m'lock()' declared here[0;0m
+[0;36m3 |[0;0m 
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupManager.swift:72:22: [1;31merror: [1;39minstance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead[0;0m
+ [0;36m70 |[0;0m     public func deleteConfiguration(id: String) async throws {
+ [0;36m71 |[0;0m         lock.lock()
+ [0;36m72 |[0;0m         defer { lock.unlock() }
+    [0;36m|[0;0m                      `- [1;31merror: [1;39minstance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead[0;0m
+ [0;36m73 |[0;0m         configurations.removeValue(forKey: id)
+ [0;36m74 |[0;0m     }
+
+Foundation.NSLock.unlock:2:11: [1;39mnote: [1;39m'unlock()' declared here[0;0m
+[0;36m1 |[0;0m class NSLock {
+[0;36m2 |[0;0m open func unlock()}
+  [0;36m|[0;0m           `- [1;39mnote: [1;39m'unlock()' declared here[0;0m
+[0;36m3 |[0;0m 
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupManager.swift:77:14: [1;31merror: [1;39minstance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead[0;0m
+ [0;36m75 |[0;0m 
+ [0;36m76 |[0;0m     public func storeJob(_ job: BackupJob) async throws {
+ [0;36m77 |[0;0m         lock.lock()
+    [0;36m|[0;0m              `- [1;31merror: [1;39minstance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead[0;0m
+ [0;36m78 |[0;0m         defer { lock.unlock() }
+ [0;36m79 |[0;0m         jobs[job.id] = job
+
+Foundation.NSLock.lock:2:11: [1;39mnote: [1;39m'lock()' declared here[0;0m
+[0;36m1 |[0;0m class NSLock {
+[0;36m2 |[0;0m open func lock()}
+  [0;36m|[0;0m           `- [1;39mnote: [1;39m'lock()' declared here[0;0m
+[0;36m3 |[0;0m 
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupManager.swift:78:22: [1;31merror: [1;39minstance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead[0;0m
+ [0;36m76 |[0;0m     public func storeJob(_ job: BackupJob) async throws {
+ [0;36m77 |[0;0m         lock.lock()
+ [0;36m78 |[0;0m         defer { lock.unlock() }
+    [0;36m|[0;0m                      `- [1;31merror: [1;39minstance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead[0;0m
+ [0;36m79 |[0;0m         jobs[job.id] = job
+ [0;36m80 |[0;0m     }
+
+Foundation.NSLock.unlock:2:11: [1;39mnote: [1;39m'unlock()' declared here[0;0m
+[0;36m1 |[0;0m class NSLock {
+[0;36m2 |[0;0m open func unlock()}
+  [0;36m|[0;0m           `- [1;39mnote: [1;39m'unlock()' declared here[0;0m
+[0;36m3 |[0;0m 
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupManager.swift:83:14: [1;31merror: [1;39minstance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead[0;0m
+ [0;36m81 |[0;0m 
+ [0;36m82 |[0;0m     public func getJob(id: String) async throws -> BackupJob? {
+ [0;36m83 |[0;0m         lock.lock()
+    [0;36m|[0;0m              `- [1;31merror: [1;39minstance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead[0;0m
+ [0;36m84 |[0;0m         defer { lock.unlock() }
+ [0;36m85 |[0;0m         return jobs[id]
+
+Foundation.NSLock.lock:2:11: [1;39mnote: [1;39m'lock()' declared here[0;0m
+[0;36m1 |[0;0m class NSLock {
+[0;36m2 |[0;0m open func lock()}
+  [0;36m|[0;0m           `- [1;39mnote: [1;39m'lock()' declared here[0;0m
+[0;36m3 |[0;0m 
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupManager.swift:84:22: [1;31merror: [1;39minstance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead[0;0m
+ [0;36m82 |[0;0m     public func getJob(id: String) async throws -> BackupJob? {
+ [0;36m83 |[0;0m         lock.lock()
+ [0;36m84 |[0;0m         defer { lock.unlock() }
+    [0;36m|[0;0m                      `- [1;31merror: [1;39minstance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead[0;0m
+ [0;36m85 |[0;0m         return jobs[id]
+ [0;36m86 |[0;0m     }
+
+Foundation.NSLock.unlock:2:11: [1;39mnote: [1;39m'unlock()' declared here[0;0m
+[0;36m1 |[0;0m class NSLock {
+[0;36m2 |[0;0m open func unlock()}
+  [0;36m|[0;0m           `- [1;39mnote: [1;39m'unlock()' declared here[0;0m
+[0;36m3 |[0;0m 
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupManager.swift:89:14: [1;31merror: [1;39minstance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead[0;0m
+ [0;36m87 |[0;0m 
+ [0;36m88 |[0;0m     public func listJobs(for configurationId: String) async throws -> [BackupJob] {
+ [0;36m89 |[0;0m         lock.lock()
+    [0;36m|[0;0m              `- [1;31merror: [1;39minstance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead[0;0m
+ [0;36m90 |[0;0m         defer { lock.unlock() }
+ [0;36m91 |[0;0m         return jobs.values.filter { $0.configurationId == configurationId }
+
+Foundation.NSLock.lock:2:11: [1;39mnote: [1;39m'lock()' declared here[0;0m
+[0;36m1 |[0;0m class NSLock {
+[0;36m2 |[0;0m open func lock()}
+  [0;36m|[0;0m           `- [1;39mnote: [1;39m'lock()' declared here[0;0m
+[0;36m3 |[0;0m 
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupManager.swift:90:22: [1;31merror: [1;39minstance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead[0;0m
+ [0;36m88 |[0;0m     public func listJobs(for configurationId: String) async throws -> [BackupJob] {
+ [0;36m89 |[0;0m         lock.lock()
+ [0;36m90 |[0;0m         defer { lock.unlock() }
+    [0;36m|[0;0m                      `- [1;31merror: [1;39minstance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead[0;0m
+ [0;36m91 |[0;0m         return jobs.values.filter { $0.configurationId == configurationId }
+ [0;36m92 |[0;0m     }
+
+Foundation.NSLock.unlock:2:11: [1;39mnote: [1;39m'unlock()' declared here[0;0m
+[0;36m1 |[0;0m class NSLock {
+[0;36m2 |[0;0m open func unlock()}
+  [0;36m|[0;0m           `- [1;39mnote: [1;39m'unlock()' declared here[0;0m
+[0;36m3 |[0;0m 
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupManager.swift:95:14: [1;31merror: [1;39minstance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead[0;0m
+ [0;36m93 |[0;0m 
+ [0;36m94 |[0;0m     public func updateJob(_ job: BackupJob) async throws {
+ [0;36m95 |[0;0m         lock.lock()
+    [0;36m|[0;0m              `- [1;31merror: [1;39minstance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead[0;0m
+ [0;36m96 |[0;0m         defer { lock.unlock() }
+ [0;36m97 |[0;0m         jobs[job.id] = job
+
+Foundation.NSLock.lock:2:11: [1;39mnote: [1;39m'lock()' declared here[0;0m
+[0;36m1 |[0;0m class NSLock {
+[0;36m2 |[0;0m open func lock()}
+  [0;36m|[0;0m           `- [1;39mnote: [1;39m'lock()' declared here[0;0m
+[0;36m3 |[0;0m 
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupManager.swift:96:22: [1;31merror: [1;39minstance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead[0;0m
+ [0;36m94 |[0;0m     public func updateJob(_ job: BackupJob) async throws {
+ [0;36m95 |[0;0m         lock.lock()
+ [0;36m96 |[0;0m         defer { lock.unlock() }
+    [0;36m|[0;0m                      `- [1;31merror: [1;39minstance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead[0;0m
+ [0;36m97 |[0;0m         jobs[job.id] = job
+ [0;36m98 |[0;0m     }
+
+Foundation.NSLock.unlock:2:11: [1;39mnote: [1;39m'unlock()' declared here[0;0m
+[0;36m1 |[0;0m class NSLock {
+[0;36m2 |[0;0m open func unlock()}
+  [0;36m|[0;0m           `- [1;39mnote: [1;39m'unlock()' declared here[0;0m
+[0;36m3 |[0;0m 
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupManager.swift:101:14: [1;31merror: [1;39minstance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead[0;0m
+ [0;36m99 |[0;0m 
+[0;36m100 |[0;0m     public func deleteJob(id: String) async throws {
+[0;36m101 |[0;0m         lock.lock()
+    [0;36m|[0;0m              `- [1;31merror: [1;39minstance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead[0;0m
+[0;36m102 |[0;0m         defer { lock.unlock() }
+[0;36m103 |[0;0m         jobs.removeValue(forKey: id)
+
+Foundation.NSLock.lock:2:11: [1;39mnote: [1;39m'lock()' declared here[0;0m
+[0;36m1 |[0;0m class NSLock {
+[0;36m2 |[0;0m open func lock()}
+  [0;36m|[0;0m           `- [1;39mnote: [1;39m'lock()' declared here[0;0m
+[0;36m3 |[0;0m 
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupManager.swift:102:22: [1;31merror: [1;39minstance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead[0;0m
+[0;36m100 |[0;0m     public func deleteJob(id: String) async throws {
+[0;36m101 |[0;0m         lock.lock()
+[0;36m102 |[0;0m         defer { lock.unlock() }
+    [0;36m|[0;0m                      `- [1;31merror: [1;39minstance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead[0;0m
+[0;36m103 |[0;0m         jobs.removeValue(forKey: id)
+[0;36m104 |[0;0m     }
+
+Foundation.NSLock.unlock:2:11: [1;39mnote: [1;39m'unlock()' declared here[0;0m
+[0;36m1 |[0;0m class NSLock {
+[0;36m2 |[0;0m open func unlock()}
+  [0;36m|[0;0m           `- [1;39mnote: [1;39m'unlock()' declared here[0;0m
+[0;36m3 |[0;0m 
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupManager.swift:107:14: [1;31merror: [1;39minstance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead[0;0m
+[0;36m105 |[0;0m 
+[0;36m106 |[0;0m     public func storeManifest(_ manifest: BackupManifest) async throws {
+[0;36m107 |[0;0m         lock.lock()
+    [0;36m|[0;0m              `- [1;31merror: [1;39minstance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead[0;0m
+[0;36m108 |[0;0m         defer { lock.unlock() }
+[0;36m109 |[0;0m         manifests[manifest.id] = manifest
+
+Foundation.NSLock.lock:2:11: [1;39mnote: [1;39m'lock()' declared here[0;0m
+[0;36m1 |[0;0m class NSLock {
+[0;36m2 |[0;0m open func lock()}
+  [0;36m|[0;0m           `- [1;39mnote: [1;39m'lock()' declared here[0;0m
+[0;36m3 |[0;0m 
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupManager.swift:108:22: [1;31merror: [1;39minstance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead[0;0m
+[0;36m106 |[0;0m     public func storeManifest(_ manifest: BackupManifest) async throws {
+[0;36m107 |[0;0m         lock.lock()
+[0;36m108 |[0;0m         defer { lock.unlock() }
+    [0;36m|[0;0m                      `- [1;31merror: [1;39minstance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead[0;0m
+[0;36m109 |[0;0m         manifests[manifest.id] = manifest
+[0;36m110 |[0;0m     }
+
+Foundation.NSLock.unlock:2:11: [1;39mnote: [1;39m'unlock()' declared here[0;0m
+[0;36m1 |[0;0m class NSLock {
+[0;36m2 |[0;0m open func unlock()}
+  [0;36m|[0;0m           `- [1;39mnote: [1;39m'unlock()' declared here[0;0m
+[0;36m3 |[0;0m 
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupManager.swift:113:14: [1;31merror: [1;39minstance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead[0;0m
+[0;36m111 |[0;0m 
+[0;36m112 |[0;0m     public func getManifest(id: String) async throws -> BackupManifest? {
+[0;36m113 |[0;0m         lock.lock()
+    [0;36m|[0;0m              `- [1;31merror: [1;39minstance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead[0;0m
+[0;36m114 |[0;0m         defer { lock.unlock() }
+[0;36m115 |[0;0m         return manifests[id]
+
+Foundation.NSLock.lock:2:11: [1;39mnote: [1;39m'lock()' declared here[0;0m
+[0;36m1 |[0;0m class NSLock {
+[0;36m2 |[0;0m open func lock()}
+  [0;36m|[0;0m           `- [1;39mnote: [1;39m'lock()' declared here[0;0m
+[0;36m3 |[0;0m 
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupManager.swift:114:22: [1;31merror: [1;39minstance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead[0;0m
+[0;36m112 |[0;0m     public func getManifest(id: String) async throws -> BackupManifest? {
+[0;36m113 |[0;0m         lock.lock()
+[0;36m114 |[0;0m         defer { lock.unlock() }
+    [0;36m|[0;0m                      `- [1;31merror: [1;39minstance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead[0;0m
+[0;36m115 |[0;0m         return manifests[id]
+[0;36m116 |[0;0m     }
+
+Foundation.NSLock.unlock:2:11: [1;39mnote: [1;39m'unlock()' declared here[0;0m
+[0;36m1 |[0;0m class NSLock {
+[0;36m2 |[0;0m open func unlock()}
+  [0;36m|[0;0m           `- [1;39mnote: [1;39m'unlock()' declared here[0;0m
+[0;36m3 |[0;0m 
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupManager.swift:119:14: [1;31merror: [1;39minstance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead[0;0m
+[0;36m117 |[0;0m 
+[0;36m118 |[0;0m     public func listManifests(for jobId: String) async throws -> [BackupManifest] {
+[0;36m119 |[0;0m         lock.lock()
+    [0;36m|[0;0m              `- [1;31merror: [1;39minstance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead[0;0m
+[0;36m120 |[0;0m         defer { lock.unlock() }
+[0;36m121 |[0;0m         return manifests.values.filter { $0.jobId == jobId }
+
+Foundation.NSLock.lock:2:11: [1;39mnote: [1;39m'lock()' declared here[0;0m
+[0;36m1 |[0;0m class NSLock {
+[0;36m2 |[0;0m open func lock()}
+  [0;36m|[0;0m           `- [1;39mnote: [1;39m'lock()' declared here[0;0m
+[0;36m3 |[0;0m 
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupManager.swift:120:22: [1;31merror: [1;39minstance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead[0;0m
+[0;36m118 |[0;0m     public func listManifests(for jobId: String) async throws -> [BackupManifest] {
+[0;36m119 |[0;0m         lock.lock()
+[0;36m120 |[0;0m         defer { lock.unlock() }
+    [0;36m|[0;0m                      `- [1;31merror: [1;39minstance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead[0;0m
+[0;36m121 |[0;0m         return manifests.values.filter { $0.jobId == jobId }
+[0;36m122 |[0;0m     }
+
+Foundation.NSLock.unlock:2:11: [1;39mnote: [1;39m'unlock()' declared here[0;0m
+[0;36m1 |[0;0m class NSLock {
+[0;36m2 |[0;0m open func unlock()}
+  [0;36m|[0;0m           `- [1;39mnote: [1;39m'unlock()' declared here[0;0m
+[0;36m3 |[0;0m 

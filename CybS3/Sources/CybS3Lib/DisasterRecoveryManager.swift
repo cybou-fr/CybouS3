@@ -1,5 +1,6 @@
 import Foundation
 import Compression
+import Crypto
 
 /// Disaster recovery manager for handling failover and restoration operations.
 public actor DisasterRecoveryManager {
@@ -407,7 +408,7 @@ public actor DisasterRecoveryManager {
 
         // Apply decryption if needed
         if metadata["encrypted"] == "true" {
-            processedData = try decryptDataForRecovery(processedData)
+            processedData = try decryptDataForRecovery(processedData, metadata: metadata)
         }
 
         // Apply decompression if needed
@@ -415,14 +416,32 @@ public actor DisasterRecoveryManager {
             let algorithm = CompressionAlgorithm(rawValue: metadata["compression_algorithm"] ?? "gzip") ?? .gzip
             processedData = try decompressData(processedData, algorithm: algorithm)
         }
-        }
 
         return processedData
     }
 
-    private func decryptDataForRecovery(_ data: Data) throws -> Data {
-        // Placeholder - would implement proper decryption
-        return data
+    private func decryptDataForRecovery(_ data: Data, metadata: [String: String]) throws -> Data {
+        guard let configId = metadata["config_id"] else {
+            throw NSError(domain: "DisasterRecoveryManager", code: 4, userInfo: [NSLocalizedDescriptionKey: "Missing config ID in backup metadata"])
+        }
+        
+        // Derive the same key used for encryption
+        let key = try deriveBackupKey(configId: configId)
+        
+        return try Encryption.decrypt(data: data, key: key)
+    }
+
+    private func deriveBackupKey(configId: String) throws -> SymmetricKey {
+        // Use the same key derivation as in BackupManager
+        let inputKeyMaterial = SymmetricKey(data: SHA256.hash(data: Data(configId.utf8)))
+        let salt = "cybs3-backup-encryption".data(using: .utf8)!
+        
+        return HKDF<SHA256>.deriveKey(
+            inputKeyMaterial: inputKeyMaterial,
+            salt: salt,
+            info: Data("backup-key".utf8),
+            outputByteCount: 32
+        )
     }
 
     private func decompressData(_ data: Data, algorithm: CompressionAlgorithm) throws -> Data {
@@ -430,11 +449,9 @@ public actor DisasterRecoveryManager {
         case .gzip:
             return try gzipDecompress(data)
         case .bzip2:
-            // TODO: Implement bzip2 decompression (requires external library)
-            return data // Return uncompressed for now
+            return try bzip2Decompress(data)
         case .xz:
-            // TODO: Implement xz decompression (requires external library)
-            return data // Return uncompressed for now
+            return try xzDecompress(data)
         }
     }
 
@@ -452,13 +469,19 @@ public actor DisasterRecoveryManager {
         data.copyBytes(to: sourceBuffer, count: data.count)
 
         // Set up decompression stream
-        var stream = compression_stream()
-        var status = compression_stream_init(&stream, COMPRESSION_STREAM_DECODE, COMPRESSION_GZIP)
+        var stream = compression_stream(
+            dst_ptr: UnsafeMutablePointer<UInt8>(bitPattern: 0)!,
+            dst_size: 0,
+            src_ptr: UnsafePointer<UInt8>(bitPattern: 0)!,
+            src_size: 0,
+            state: UnsafeMutableRawPointer(bitPattern: 0)
+        )
+        var status = compression_stream_init(&stream, COMPRESSION_STREAM_DECODE, COMPRESSION_ZLIB)
         guard status != COMPRESSION_STATUS_ERROR else {
             throw NSError(domain: "DisasterRecoveryManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "Failed to initialize decompression stream"])
         }
 
-        stream.src_ptr = sourceBuffer
+        stream.src_ptr = UnsafePointer(sourceBuffer)
         stream.src_size = data.count
         stream.dst_ptr = destinationBuffer
         stream.dst_size = destinationBufferSize
@@ -482,6 +505,47 @@ public actor DisasterRecoveryManager {
         } while status == COMPRESSION_STATUS_OK
 
         compression_stream_destroy(&stream)
+        return decompressedData
+    }
+
+    private func bzip2Decompress(_ data: Data) throws -> Data {
+        return try decompressWithSystemTool(data: data, tool: "bunzip2", args: ["-c"])
+    }
+
+    private func xzDecompress(_ data: Data) throws -> Data {
+        return try decompressWithSystemTool(data: data, tool: "unxz", args: ["-c"])
+    }
+
+    private func decompressWithSystemTool(data: Data, tool: String, args: [String]) throws -> Data {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/\(tool)")
+        process.arguments = args
+
+        let inputPipe = Pipe()
+        let outputPipe = Pipe()
+        let errorPipe = Pipe()
+
+        process.standardInput = inputPipe
+        process.standardOutput = outputPipe
+        process.standardError = errorPipe
+
+        try process.run()
+
+        // Write data to input
+        inputPipe.fileHandleForWriting.write(data)
+        inputPipe.fileHandleForWriting.closeFile()
+
+        // Read decompressed output
+        let decompressedData = outputPipe.fileHandleForReading.readDataToEndOfFile()
+        let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
+
+        process.waitUntilExit()
+
+        if process.terminationStatus != 0 {
+            let errorMessage = String(data: errorData, encoding: .utf8) ?? "Unknown error"
+            throw NSError(domain: "DisasterRecoveryManager", code: 3, userInfo: [NSLocalizedDescriptionKey: "\(tool) failed: \(errorMessage)"])
+        }
+
         return decompressedData
     }
 

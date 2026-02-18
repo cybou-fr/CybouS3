@@ -1,4 +1,5 @@
 import Foundation
+import Crypto
 
 /// Protocol for backup storage implementations.
 public protocol BackupStorage: Sendable {
@@ -428,9 +429,7 @@ public actor BackupManager {
 
         // Apply encryption
         if config.encryption.enabled {
-            // In a real implementation, this would use proper encryption
-            // For now, we'll just add a simple marker
-            processedData = try encryptDataForBackup(processedData, config: config.encryption)
+            processedData = try encryptDataForBackup(processedData, config: config.encryption, configId: config.id)
         }
 
         return processedData
@@ -442,10 +441,37 @@ public actor BackupManager {
         return data
     }
 
-    private func encryptDataForBackup(_ data: Data, config: BackupEncryptionSettings) throws -> Data {
-        // Simple encryption marker
-        // In production, this would use proper encryption
-        return data // Placeholder - return unencrypted for now
+    private func encryptDataForBackup(_ data: Data, config: BackupEncryptionSettings, configId: String) throws -> Data {
+        // Derive backup encryption key from config ID
+        let key = try deriveBackupKey(configId: configId, settings: config)
+        
+        // Map algorithm string to EncryptionAlgorithm
+        let algorithm: EncryptionAlgorithm
+        switch config.algorithm.lowercased() {
+        case "aes-256-gcm":
+            algorithm = .aes256gcm
+        case "chacha20-poly1305", "chacha20poly1305":
+            algorithm = .chacha20poly1305
+        default:
+            algorithm = .aes256gcm // Default fallback
+        }
+        
+        return try Encryption.encrypt(data: data, key: key, algorithm: algorithm)
+    }
+
+    private func deriveBackupKey(configId: String, settings: BackupEncryptionSettings) throws -> SymmetricKey {
+        // Use HKDF to derive a key from the config ID
+        // In a production system, this should use the main vault key as input key material
+        // For now, we'll use a hash of the config ID as input
+        let inputKeyMaterial = SymmetricKey(data: SHA256.hash(data: Data(configId.utf8)))
+        let salt = "cybs3-backup-encryption".data(using: .utf8)!
+        
+        return HKDF<SHA256>.deriveKey(
+            inputKeyMaterial: inputKeyMaterial,
+            salt: salt,
+            info: Data("backup-key".utf8),
+            outputByteCount: 32
+        )
     }
 
     private func generateBackupKey(originalKey: String, config: BackupConfiguration, timestamp: Date) -> String {

@@ -223,7 +223,7 @@ public class DefaultFileOperationsService: FileOperationsServiceProtocol {
     public func putFile(input: PutFileInput) async throws -> PutFileOutput {
         let fileURL = URL(fileURLWithPath: input.localPath)
         guard FileManager.default.fileExists(atPath: input.localPath) else {
-            throw FileOperationError.fileNotFound(input.localPath)
+            throw FileHandlerError.fileNotFound(input.localPath)
         }
 
         let fileSize = try FileManager.default.attributesOfItem(atPath: fileURL.path)[.size] as? Int64 ?? 0
@@ -313,7 +313,7 @@ public class DefaultFileOperationsService: FileOperationsServiceProtocol {
 }
 
 /// File operation errors
-enum FileOperationError: LocalizedError {
+enum FileHandlerError: LocalizedError {
     case fileNotFound(String)
 
     var errorDescription: String? {

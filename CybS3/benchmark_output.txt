@@ -1,0 +1,262 @@
+warning: 'cybs3': the target name CybS3 has different case on the filesystem and the Package.swift manifest file
+Building for debugging...
+[0/4] Write swift-version--58304C5D6DBC2206.txt
+error: emit-module command failed with exit code 1 (use -v to see invocation)
+[2/6] Emitting module CybS3Lib
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/PerformanceHandlers.swift:1:8: [1;33mwarning: [1;39mfile 'PerformanceHandlers.swift' is part of module 'CybS3Lib'; ignoring import[0;0m
+  [0;36m1 |[0;0m import CybS3Lib
+    [0;36m|[0;0m        `- [1;33mwarning: [1;39mfile 'PerformanceHandlers.swift' is part of module 'CybS3Lib'; ignoring import[0;0m
+  [0;36m2 |[0;0m import Foundation
+  [0;36m3 |[0;0m 
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/ServerHandlers.swift:2:8: [1;33mwarning: [1;39mfile 'ServerHandlers.swift' is part of module 'CybS3Lib'; ignoring import[0;0m
+  [0;36m1 |[0;0m import AsyncHTTPClient
+  [0;36m2 |[0;0m import CybS3Lib
+    [0;36m|[0;0m        `- [1;33mwarning: [1;39mfile 'ServerHandlers.swift' is part of module 'CybS3Lib'; ignoring import[0;0m
+  [0;36m3 |[0;0m import Foundation
+  [0;36m4 |[0;0m import NIOCore
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/UnifiedAuthService.swift:2:8: [1;33mwarning: [1;39mfile 'UnifiedAuthService.swift' is part of module 'CybS3Lib'; ignoring import[0;0m
+  [0;36m1 |[0;0m import Foundation
+  [0;36m2 |[0;0m import CybS3Lib
+    [0;36m|[0;0m        `- [1;33mwarning: [1;39mfile 'UnifiedAuthService.swift' is part of module 'CybS3Lib'; ignoring import[0;0m
+  [0;36m3 |[0;0m 
+  [0;36m4 |[0;0m /// Service for unified authentication between CybS3 and SwiftS3
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupServices.swift:144:46: [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+[0;36m142 |[0;0m     public func startBackup(configurationId: String) async throws -> String {
+[0;36m143 |[0;0m         // Get configuration
+[0;36m144 |[0;0m         guard let config = try await [4;39mstorage.getConfiguration(id: configurationId)[0;0m else {
+    [0;36m|[0;0m                                              |- [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+    [0;36m|[0;0m                                              `- [1;39mnote: [1;39msending 'self'-isolated 'self.storage' to nonisolated instance method 'getConfiguration(id:)' risks causing data races between nonisolated and 'self'-isolated uses[0;0m
+[0;36m145 |[0;0m             throw BackupError.configurationNotFound(configurationId)
+[0;36m146 |[0;0m         }
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupServices.swift:149:46: [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+[0;36m147 |[0;0m 
+[0;36m148 |[0;0m         // Check for existing active jobs
+[0;36m149 |[0;0m         let existingJobs = try await [4;39mstorage.listJobs(for: configurationId)[0;0m
+    [0;36m|[0;0m                                              |- [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+    [0;36m|[0;0m                                              `- [1;39mnote: [1;39msending 'self'-isolated 'self.storage' to nonisolated instance method 'listJobs(for:)' risks causing data races between nonisolated and 'self'-isolated uses[0;0m
+[0;36m150 |[0;0m         let runningJobs = existingJobs.filter { $0.status == .running || $0.status == .pending }
+[0;36m151 |[0;0m 
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupServices.swift:165:27: [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+[0;36m163 |[0;0m         )
+[0;36m164 |[0;0m 
+[0;36m165 |[0;0m         try await [4;39mstorage.storeJob(job)[0;0m
+    [0;36m|[0;0m                           |- [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+    [0;36m|[0;0m                           `- [1;39mnote: [1;39msending 'self'-isolated 'self.storage' to nonisolated instance method 'storeJob' risks causing data races between nonisolated and 'self'-isolated uses[0;0m
+[0;36m166 |[0;0m 
+[0;36m167 |[0;0m         // Start backup task
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupServices.swift:250:27: [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+[0;36m248 |[0;0m         var updatedJob = job
+[0;36m249 |[0;0m         updatedJob.status = .running
+[0;36m250 |[0;0m         try await [4;39mstorage.updateJob(updatedJob)[0;0m
+    [0;36m|[0;0m                           |- [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+    [0;36m|[0;0m                           `- [1;39mnote: [1;39msending 'self'-isolated 'self.storage' to nonisolated instance method 'updateJob' risks causing data races between nonisolated and 'self'-isolated uses[0;0m
+[0;36m251 |[0;0m 
+[0;36m252 |[0;0m         defer {
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupServices.swift:277:31: [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+[0;36m275 |[0;0m             updatedJob.progress.objectsTotal = objects.count
+[0;36m276 |[0;0m             updatedJob.progress.bytesTotal = objects.reduce(0) { $0 + $1.size }
+[0;36m277 |[0;0m             try await [4;39mstorage.updateJob(updatedJob)[0;0m
+    [0;36m|[0;0m                               |- [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+    [0;36m|[0;0m                               `- [1;39mnote: [1;39msending 'self'-isolated 'self.storage' to nonisolated instance method 'updateJob' risks causing data races between nonisolated and 'self'-isolated uses[0;0m
+[0;36m278 |[0;0m 
+[0;36m279 |[0;0m             // Backup objects
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupServices.swift:316:39: [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+[0;36m314 |[0;0m                     updatedJob.progress.objectsProcessed = index + 1
+[0;36m315 |[0;0m                     updatedJob.progress.bytesProcessed += object.size
+[0;36m316 |[0;0m                     try await [4;39mstorage.updateJob(updatedJob)[0;0m
+    [0;36m|[0;0m                                       |- [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+    [0;36m|[0;0m                                       `- [1;39mnote: [1;39msending 'self'-isolated 'self.storage' to nonisolated instance method 'updateJob' risks causing data races between nonisolated and 'self'-isolated uses[0;0m
+[0;36m317 |[0;0m 
+[0;36m318 |[0;0m                 } catch {
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupServices.swift:359:31: [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+[0;36m357 |[0;0m             )
+[0;36m358 |[0;0m 
+[0;36m359 |[0;0m             try await [4;39mstorage.storeManifest(manifest)[0;0m
+    [0;36m|[0;0m                               |- [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+    [0;36m|[0;0m                               `- [1;39mnote: [1;39msending 'self'-isolated 'self.storage' to nonisolated instance method 'storeManifest' risks causing data races between nonisolated and 'self'-isolated uses[0;0m
+[0;36m360 |[0;0m 
+[0;36m361 |[0;0m             // Update job as completed
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupServices.swift:366:31: [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+[0;36m364 |[0;0m             updatedJob.progress.objectsProcessed = backedUpObjects.count
+[0;36m365 |[0;0m             updatedJob.progress.bytesProcessed = backedUpObjects.reduce(0) { $0 + $1.size }
+[0;36m366 |[0;0m             try await [4;39mstorage.updateJob(updatedJob)[0;0m
+    [0;36m|[0;0m                               |- [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+    [0;36m|[0;0m                               `- [1;39mnote: [1;39msending 'self'-isolated 'self.storage' to nonisolated instance method 'updateJob' risks causing data races between nonisolated and 'self'-isolated uses[0;0m
+[0;36m367 |[0;0m 
+[0;36m368 |[0;0m             try await auditLogger.store(entry: AuditLogEntry(
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupServices.swift:390:31: [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+[0;36m388 |[0;0m             failedJob.completedAt = Date()
+[0;36m389 |[0;0m             failedJob.errorMessage = error.localizedDescription
+[0;36m390 |[0;0m             try await [4;39mstorage.updateJob(failedJob)[0;0m
+    [0;36m|[0;0m                               |- [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+    [0;36m|[0;0m                               `- [1;39mnote: [1;39msending 'self'-isolated 'self.storage' to nonisolated instance method 'updateJob' risks causing data races between nonisolated and 'self'-isolated uses[0;0m
+[0;36m391 |[0;0m 
+[0;36m392 |[0;0m             throw error
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupServices.swift:177:35: [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+[0;36m175 |[0;0m                 failedJob.completedAt = Date()
+[0;36m176 |[0;0m                 failedJob.errorMessage = error.localizedDescription
+[0;36m177 |[0;0m                 try await [4;39mstorage.updateJob(failedJob)[0;0m
+    [0;36m|[0;0m                                   |- [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+    [0;36m|[0;0m                                   `- [1;39mnote: [1;39msending 'self'-isolated 'self.storage' to nonisolated instance method 'updateJob' risks causing data races between nonisolated and 'self'-isolated uses[0;0m
+[0;36m178 |[0;0m 
+[0;36m179 |[0;0m                 try await auditLogger.store(entry: AuditLogEntry(
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupServices.swift:217:44: [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+[0;36m215 |[0;0m             activeJobs.removeValue(forKey: jobId)
+[0;36m216 |[0;0m 
+[0;36m217 |[0;0m             if var job = try await [4;39mstorage.getJob(id: jobId)[0;0m {
+    [0;36m|[0;0m                                            |- [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+    [0;36m|[0;0m                                            `- [1;39mnote: [1;39msending 'self'-isolated 'self.storage' to nonisolated instance method 'getJob(id:)' risks causing data races between nonisolated and 'self'-isolated uses[0;0m
+[0;36m218 |[0;0m                 job.status = .cancelled
+[0;36m219 |[0;0m                 job.completedAt = Date()
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupServices.swift:220:35: [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+[0;36m218 |[0;0m                 job.status = .cancelled
+[0;36m219 |[0;0m                 job.completedAt = Date()
+[0;36m220 |[0;0m                 try await [4;39mstorage.updateJob(job)[0;0m
+    [0;36m|[0;0m                                   |- [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+    [0;36m|[0;0m                                   `- [1;39mnote: [1;39msending 'self'-isolated 'self.storage' to nonisolated instance method 'updateJob' risks causing data races between nonisolated and 'self'-isolated uses[0;0m
+[0;36m221 |[0;0m             }
+[0;36m222 |[0;0m 
+
+[#SendingRisksDataRace]: <https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race>
+[3/6] Compiling CybS3Lib BackupServices.swift
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupServices.swift:144:46: [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+[0;36m142 |[0;0m     public func startBackup(configurationId: String) async throws -> String {
+[0;36m143 |[0;0m         // Get configuration
+[0;36m144 |[0;0m         guard let config = try await [4;39mstorage.getConfiguration(id: configurationId)[0;0m else {
+    [0;36m|[0;0m                                              |- [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+    [0;36m|[0;0m                                              `- [1;39mnote: [1;39msending 'self'-isolated 'self.storage' to nonisolated instance method 'getConfiguration(id:)' risks causing data races between nonisolated and 'self'-isolated uses[0;0m
+[0;36m145 |[0;0m             throw BackupError.configurationNotFound(configurationId)
+[0;36m146 |[0;0m         }
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupServices.swift:149:46: [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+[0;36m147 |[0;0m 
+[0;36m148 |[0;0m         // Check for existing active jobs
+[0;36m149 |[0;0m         let existingJobs = try await [4;39mstorage.listJobs(for: configurationId)[0;0m
+    [0;36m|[0;0m                                              |- [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+    [0;36m|[0;0m                                              `- [1;39mnote: [1;39msending 'self'-isolated 'self.storage' to nonisolated instance method 'listJobs(for:)' risks causing data races between nonisolated and 'self'-isolated uses[0;0m
+[0;36m150 |[0;0m         let runningJobs = existingJobs.filter { $0.status == .running || $0.status == .pending }
+[0;36m151 |[0;0m 
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupServices.swift:165:27: [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+[0;36m163 |[0;0m         )
+[0;36m164 |[0;0m 
+[0;36m165 |[0;0m         try await [4;39mstorage.storeJob(job)[0;0m
+    [0;36m|[0;0m                           |- [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+    [0;36m|[0;0m                           `- [1;39mnote: [1;39msending 'self'-isolated 'self.storage' to nonisolated instance method 'storeJob' risks causing data races between nonisolated and 'self'-isolated uses[0;0m
+[0;36m166 |[0;0m 
+[0;36m167 |[0;0m         // Start backup task
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupServices.swift:250:27: [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+[0;36m248 |[0;0m         var updatedJob = job
+[0;36m249 |[0;0m         updatedJob.status = .running
+[0;36m250 |[0;0m         try await [4;39mstorage.updateJob(updatedJob)[0;0m
+    [0;36m|[0;0m                           |- [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+    [0;36m|[0;0m                           `- [1;39mnote: [1;39msending 'self'-isolated 'self.storage' to nonisolated instance method 'updateJob' risks causing data races between nonisolated and 'self'-isolated uses[0;0m
+[0;36m251 |[0;0m 
+[0;36m252 |[0;0m         defer {
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupServices.swift:277:31: [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+[0;36m275 |[0;0m             updatedJob.progress.objectsTotal = objects.count
+[0;36m276 |[0;0m             updatedJob.progress.bytesTotal = objects.reduce(0) { $0 + $1.size }
+[0;36m277 |[0;0m             try await [4;39mstorage.updateJob(updatedJob)[0;0m
+    [0;36m|[0;0m                               |- [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+    [0;36m|[0;0m                               `- [1;39mnote: [1;39msending 'self'-isolated 'self.storage' to nonisolated instance method 'updateJob' risks causing data races between nonisolated and 'self'-isolated uses[0;0m
+[0;36m278 |[0;0m 
+[0;36m279 |[0;0m             // Backup objects
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupServices.swift:316:39: [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+[0;36m314 |[0;0m                     updatedJob.progress.objectsProcessed = index + 1
+[0;36m315 |[0;0m                     updatedJob.progress.bytesProcessed += object.size
+[0;36m316 |[0;0m                     try await [4;39mstorage.updateJob(updatedJob)[0;0m
+    [0;36m|[0;0m                                       |- [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+    [0;36m|[0;0m                                       `- [1;39mnote: [1;39msending 'self'-isolated 'self.storage' to nonisolated instance method 'updateJob' risks causing data races between nonisolated and 'self'-isolated uses[0;0m
+[0;36m317 |[0;0m 
+[0;36m318 |[0;0m                 } catch {
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupServices.swift:359:31: [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+[0;36m357 |[0;0m             )
+[0;36m358 |[0;0m 
+[0;36m359 |[0;0m             try await [4;39mstorage.storeManifest(manifest)[0;0m
+    [0;36m|[0;0m                               |- [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+    [0;36m|[0;0m                               `- [1;39mnote: [1;39msending 'self'-isolated 'self.storage' to nonisolated instance method 'storeManifest' risks causing data races between nonisolated and 'self'-isolated uses[0;0m
+[0;36m360 |[0;0m 
+[0;36m361 |[0;0m             // Update job as completed
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupServices.swift:366:31: [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+[0;36m364 |[0;0m             updatedJob.progress.objectsProcessed = backedUpObjects.count
+[0;36m365 |[0;0m             updatedJob.progress.bytesProcessed = backedUpObjects.reduce(0) { $0 + $1.size }
+[0;36m366 |[0;0m             try await [4;39mstorage.updateJob(updatedJob)[0;0m
+    [0;36m|[0;0m                               |- [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+    [0;36m|[0;0m                               `- [1;39mnote: [1;39msending 'self'-isolated 'self.storage' to nonisolated instance method 'updateJob' risks causing data races between nonisolated and 'self'-isolated uses[0;0m
+[0;36m367 |[0;0m 
+[0;36m368 |[0;0m             try await auditLogger.store(entry: AuditLogEntry(
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupServices.swift:390:31: [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+[0;36m388 |[0;0m             failedJob.completedAt = Date()
+[0;36m389 |[0;0m             failedJob.errorMessage = error.localizedDescription
+[0;36m390 |[0;0m             try await [4;39mstorage.updateJob(failedJob)[0;0m
+    [0;36m|[0;0m                               |- [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+    [0;36m|[0;0m                               `- [1;39mnote: [1;39msending 'self'-isolated 'self.storage' to nonisolated instance method 'updateJob' risks causing data races between nonisolated and 'self'-isolated uses[0;0m
+[0;36m391 |[0;0m 
+[0;36m392 |[0;0m             throw error
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupServices.swift:177:35: [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+[0;36m175 |[0;0m                 failedJob.completedAt = Date()
+[0;36m176 |[0;0m                 failedJob.errorMessage = error.localizedDescription
+[0;36m177 |[0;0m                 try await [4;39mstorage.updateJob(failedJob)[0;0m
+    [0;36m|[0;0m                                   |- [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+    [0;36m|[0;0m                                   `- [1;39mnote: [1;39msending 'self'-isolated 'self.storage' to nonisolated instance method 'updateJob' risks causing data races between nonisolated and 'self'-isolated uses[0;0m
+[0;36m178 |[0;0m 
+[0;36m179 |[0;0m                 try await auditLogger.store(entry: AuditLogEntry(
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupServices.swift:217:44: [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+[0;36m215 |[0;0m             activeJobs.removeValue(forKey: jobId)
+[0;36m216 |[0;0m 
+[0;36m217 |[0;0m             if var job = try await [4;39mstorage.getJob(id: jobId)[0;0m {
+    [0;36m|[0;0m                                            |- [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+    [0;36m|[0;0m                                            `- [1;39mnote: [1;39msending 'self'-isolated 'self.storage' to nonisolated instance method 'getJob(id:)' risks causing data races between nonisolated and 'self'-isolated uses[0;0m
+[0;36m218 |[0;0m                 job.status = .cancelled
+[0;36m219 |[0;0m                 job.completedAt = Date()
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupServices.swift:220:35: [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+[0;36m218 |[0;0m                 job.status = .cancelled
+[0;36m219 |[0;0m                 job.completedAt = Date()
+[0;36m220 |[0;0m                 try await [4;39mstorage.updateJob(job)[0;0m
+    [0;36m|[0;0m                                   |- [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+    [0;36m|[0;0m                                   `- [1;39mnote: [1;39msending 'self'-isolated 'self.storage' to nonisolated instance method 'updateJob' risks causing data races between nonisolated and 'self'-isolated uses[0;0m
+[0;36m221 |[0;0m             }
+[0;36m222 |[0;0m 
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupServices.swift:237:27: [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+[0;36m235 |[0;0m 
+[0;36m236 |[0;0m     public func getJobStatus(jobId: String) async throws -> BackupJob? {
+[0;36m237 |[0;0m         try await [4;39mstorage.getJob(id: jobId)[0;0m
+    [0;36m|[0;0m                           |- [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+    [0;36m|[0;0m                           `- [1;39mnote: [1;39msending 'self'-isolated 'self.storage' to nonisolated instance method 'getJob(id:)' risks causing data races between nonisolated and 'self'-isolated uses[0;0m
+[0;36m238 |[0;0m     }
+[0;36m239 |[0;0m 
+
+/Users/cybou/Documents/CybouS3/CybS3/Sources/CybS3Lib/BackupServices.swift:241:27: [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+[0;36m239 |[0;0m 
+[0;36m240 |[0;0m     public func listJobs(for configurationId: String) async throws -> [BackupJob] {
+[0;36m241 |[0;0m         try await [4;39mstorage.listJobs(for: configurationId)[0;0m
+    [0;36m|[0;0m                           |- [1;31merror: [1;39msending 'self.storage' risks causing data races[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race\SendingRisksDataRace]8;;\]
+    [0;36m|[0;0m                           `- [1;39mnote: [1;39msending 'self'-isolated 'self.storage' to nonisolated instance method 'listJobs(for:)' risks causing data races between nonisolated and 'self'-isolated uses[0;0m
+[0;36m242 |[0;0m     }
+[0;36m243 |[0;0m 
+
+[#SendingRisksDataRace]: <https://docs.swift.org/compiler/documentation/diagnostics/sending-risks-data-race>
