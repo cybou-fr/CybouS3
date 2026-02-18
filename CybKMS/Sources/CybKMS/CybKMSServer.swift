@@ -82,7 +82,6 @@ struct CybKMSServer: AsyncParsableCommand {
                 ]
             )
         }
-        }
 
         // Setup Hummingbird application
         let app = Application(

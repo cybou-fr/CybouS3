@@ -91,7 +91,7 @@ public struct KMSKeyMetadata: Codable, Sendable {
 }
 
 /// KMS error types (AWS-compatible)
-public enum KMSError: Error, Codable {
+public enum KMSError: Error, Codable, Equatable {
     case notFoundException(String)
     case accessDeniedException(String)
     case invalidKeyUsageException(String)
