@@ -188,18 +188,27 @@ let decrypted = try await client.decrypt(
 
 ## Development
 
-### Building
+### Testing
+
+CybKMS includes comprehensive unit tests covering core functionality:
 
 ```bash
-# Debug build
-swift build
-
-# Release build
-swift build -c release
-
-# Run tests
+# Run all tests
 swift test
+
+# Run specific test class
+swift test --filter KMSCoreTests
+
+# Run with verbose output
+swift test -v
 ```
+
+Test coverage includes:
+- Key creation, encryption, and decryption operations
+- Key state management (enable/disable/delete)
+- Error handling for invalid operations
+- Data structure validation
+- API compatibility verification
 
 ### Project Structure
 
@@ -214,8 +223,10 @@ CybKMS/
 │   │       └── KMSController.swift
 │   └── CybKMSClient/             # HTTP client library
 │       └── CybKMSClient.swift
-└── Tests/
-    └── CybKMSTests/              # Unit and integration tests
+├── Tests/
+│   └── CybKMSTests/              # Unit and integration tests
+│       └── KMSCoreTests.swift    # Core functionality tests
+└── README.md                     # This file
 ```
 
 ## Future Enhancements

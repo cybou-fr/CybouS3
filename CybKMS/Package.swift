@@ -42,5 +42,14 @@ let package = Package(
             ],
             path: "CybKMSClient"
         ),
+        .testTarget(
+            name: "CybKMSTests",
+            dependencies: [
+                "CybKMS",
+                "CybKMSClient",
+                .product(name: "Crypto", package: "swift-crypto"),
+                .product(name: "Hummingbird", package: "hummingbird"),
+            ]
+        ),
     ]
 )
