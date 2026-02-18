@@ -11,7 +11,7 @@ public protocol BucketOperationsServiceProtocol {
 public class DefaultBucketOperationsService: BucketOperationsServiceProtocol {
     private let client: S3Client
 
-    init(client: S3Client) {
+    public init(client: S3Client) {
         self.client = client
     }
 
@@ -33,6 +33,11 @@ public class DefaultBucketOperationsService: BucketOperationsServiceProtocol {
 public struct CreateBucketInput {
     public let bucketName: String
     public let vaultName: String?
+
+    public init(bucketName: String, vaultName: String?) {
+        self.bucketName = bucketName
+        self.vaultName = vaultName
+    }
 }
 
 public struct CreateBucketOutput {
@@ -44,16 +49,27 @@ public struct DeleteBucketInput {
     public let bucketName: String
     public let vaultName: String?
     public let force: Bool
+
+    public init(bucketName: String, vaultName: String?, force: Bool = false) {
+        self.bucketName = bucketName
+        self.vaultName = vaultName
+        self.force = force
+    }
 }
 
 public struct DeleteBucketOutput {
-    let bucketName: String
-    let vaultName: String?
+    public let bucketName: String
+    public let vaultName: String?
 }
 
 public struct ListBucketsInput {
     public let vaultName: String?
     public let json: Bool
+
+    public init(vaultName: String?, json: Bool) {
+        self.vaultName = vaultName
+        self.json = json
+    }
 }
 
 public struct ListBucketsOutput {
@@ -64,41 +80,9 @@ public struct ListBucketsOutput {
 
 /// Bucket operation handlers
 
-class CreateBucketHandler {
-    typealias Input = CreateBucketInput
-    typealias Output = CreateBucketOutput
-
-    private let service: BucketOperationsServiceProtocol
-
-    init(service: BucketOperationsServiceProtocol) {
-        self.service = service
-    }
-
-    func handle(input: Input) async throws -> Output {
-        try await service.createBucket(name: input.bucketName)
-        return Output(bucketName: input.bucketName, vaultName: input.vaultName)
-    }
-}
-
-class DeleteBucketHandler {
-    typealias Input = DeleteBucketInput
-    typealias Output = DeleteBucketOutput
-
-    private let service: BucketOperationsServiceProtocol
-
-    init(service: BucketOperationsServiceProtocol) {
-        self.service = service
-    }
-
-    func handle(input: Input) async throws -> Output {
-        try await service.deleteBucket(name: input.bucketName)
-        return Output(bucketName: input.bucketName, vaultName: input.vaultName)
-    }
-}
-
-public class ListBucketsHandler {
-    typealias Input = ListBucketsInput
-    typealias Output = ListBucketsOutput
+public class CreateBucketHandler {
+    public typealias Input = CreateBucketInput
+    public typealias Output = CreateBucketOutput
 
     private let service: BucketOperationsServiceProtocol
 
@@ -106,7 +90,39 @@ public class ListBucketsHandler {
         self.service = service
     }
 
-    func handle(input: Input) async throws -> Output {
+    public func handle(input: Input) async throws -> Output {
+        try await service.createBucket(name: input.bucketName)
+        return Output(bucketName: input.bucketName, vaultName: input.vaultName)
+    }
+}
+
+public class DeleteBucketHandler {
+    public typealias Input = DeleteBucketInput
+    public typealias Output = DeleteBucketOutput
+
+    private let service: BucketOperationsServiceProtocol
+
+    public init(service: BucketOperationsServiceProtocol) {
+        self.service = service
+    }
+
+    public func handle(input: Input) async throws -> Output {
+        try await service.deleteBucket(name: input.bucketName)
+        return Output(bucketName: input.bucketName, vaultName: input.vaultName)
+    }
+}
+
+public class ListBucketsHandler {
+    public typealias Input = ListBucketsInput
+    public typealias Output = ListBucketsOutput
+
+    private let service: BucketOperationsServiceProtocol
+
+    public init(service: BucketOperationsServiceProtocol) {
+        self.service = service
+    }
+
+    public func handle(input: Input) async throws -> Output {
         let buckets = try await service.listBuckets()
         return Output(buckets: buckets, vaultName: input.vaultName, json: input.json)
     }

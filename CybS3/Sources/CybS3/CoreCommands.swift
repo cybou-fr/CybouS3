@@ -31,7 +31,7 @@ struct CoreCommands: AsyncParsableCommand {
                 let mnemonic = try InteractionService.promptForMnemonic(purpose: "login")
 
                 let handler = LoginHandler(authService: CoreServices.shared.authService)
-                let result = try await handler.handle(input: LoginInput(mnemonic: mnemonic))
+                let result = try await handler.handle(input: LoginInput(mnemonic: mnemonic.joined(separator: " ")))
 
                 if result.success {
                     ConsoleUI.success(result.message)
@@ -114,7 +114,7 @@ struct CoreCommands: AsyncParsableCommand {
                     purpose: "modify configuration")
 
                 let input = ConfigInput(
-                    mnemonic: mnemonic,
+                    mnemonic: mnemonic.joined(separator: " "),
                     list: list,
                     reset: reset,
                     accessKey: accessKey,
@@ -136,19 +136,19 @@ struct CoreCommands: AsyncParsableCommand {
                     if let config = result.config {
                         ConsoleUI.header("Current Configuration")
                         print("Settings:")
-                        print("  Endpoint: \(config.settings.endpoint ?? "not set")")
-                        print("  Region: \(config.settings.region ?? "not set")")
-                        print("  Bucket: \(config.settings.bucket ?? "not set")")
-                        print("  Access Key: \(config.settings.accessKey?.prefix(8) ?? "not set")...")
+                        print("  Endpoint: \(config.settings.defaultEndpoint ?? "not set")")
+                        print("  Region: \(config.settings.defaultRegion ?? "not set")")
+                        print("  Bucket: \(config.settings.defaultBucket ?? "not set")")
+                        print("  Access Key: \(config.settings.defaultAccessKey?.prefix(8) ?? "not set")...")
                         print()
                         print("Vaults:")
                         for vault in config.vaults {
                             let active = vault.name == config.activeVaultName ? " (active)" : ""
                             print("  \(vault.name)\(active)")
-                            print("    Endpoint: \(vault.endpoint ?? "inherits from global")")
-                            print("    Region: \(vault.region ?? "inherits from global")")
+                            print("    Endpoint: \(vault.endpoint)")
+                            print("    Region: \(vault.region)")
                             print("    Bucket: \(vault.bucket ?? "inherits from global")")
-                            print("    Access Key: \(vault.accessKey?.prefix(8) ?? "inherits from global")...")
+                            print("    Access Key: \(vault.accessKey.prefix(8))...")
                         }
                     }
                 } else {

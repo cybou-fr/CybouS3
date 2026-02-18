@@ -20,6 +20,16 @@ public struct ServerStartConfig {
     public let accessKey: String
     public let secretKey: String
     public let background: Bool
+
+    public init(swifts3Path: String, port: Int, hostname: String, storage: String, accessKey: String, secretKey: String, background: Bool) {
+        self.swifts3Path = swifts3Path
+        self.port = port
+        self.hostname = hostname
+        self.storage = storage
+        self.accessKey = accessKey
+        self.secretKey = secretKey
+        self.background = background
+    }
 }
 
 /// Results for server operations
@@ -50,14 +60,14 @@ public struct ServerLogsResult {
 }
 
 /// Default implementation of server process service
-class DefaultServerProcessService: ServerProcessServiceProtocol {
+public class DefaultServerProcessService: ServerProcessServiceProtocol {
     private let httpClient: HTTPClient
 
-    init(httpClient: HTTPClient = HTTPClient()) {
+    public init(httpClient: HTTPClient = HTTPClient()) {
         self.httpClient = httpClient
     }
 
-    func startServer(config: ServerStartConfig) async throws -> ServerStartResult {
+    public func startServer(config: ServerStartConfig) async throws -> ServerStartResult {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: config.swifts3Path)
         process.arguments = [
@@ -101,7 +111,7 @@ class DefaultServerProcessService: ServerProcessServiceProtocol {
         }
     }
 
-    func stopServer(port: Int) async throws -> ServerStopResult {
+    public func stopServer(port: Int) async throws -> ServerStopResult {
         let pidFile = "/tmp/swifts3-\(port).pid"
         guard let pidString = try? String(contentsOfFile: pidFile),
               let pid = Int(pidString) else {
@@ -120,7 +130,7 @@ class DefaultServerProcessService: ServerProcessServiceProtocol {
         return ServerStopResult(port: port, pid: pid)
     }
 
-    func getServerStatus(port: Int) async throws -> ServerStatusResult {
+    public func getServerStatus(port: Int) async throws -> ServerStatusResult {
         let pidFile = "/tmp/swifts3-\(port).pid"
         let pid: Int?
         if let pidString = try? String(contentsOfFile: pidFile),
@@ -149,7 +159,7 @@ class DefaultServerProcessService: ServerProcessServiceProtocol {
         )
     }
 
-    func getServerLogs(port: Int, lines: Int, follow: Bool) async throws -> ServerLogsResult {
+    public func getServerLogs(port: Int, lines: Int, follow: Bool) async throws -> ServerLogsResult {
         let pidFile = "/tmp/swifts3-\(port).pid"
         guard let pidString = try? String(contentsOfFile: pidFile),
               let pid = Int(pidString) else {
@@ -199,101 +209,119 @@ enum ServerError: LocalizedError {
 
 /// Input/Output types for server handlers
 
-struct StartServerInput {
-    let config: ServerStartConfig
+public struct StartServerInput {
+    public let config: ServerStartConfig
+
+    public init(config: ServerStartConfig) {
+        self.config = config
+    }
 }
 
-struct StartServerOutput {
-    let result: ServerStartResult
+public struct StartServerOutput {
+    public let result: ServerStartResult
 }
 
-struct StopServerInput {
-    let port: Int
+public struct StopServerInput {
+    public let port: Int
+
+    public init(port: Int) {
+        self.port = port
+    }
 }
 
-struct StopServerOutput {
-    let result: ServerStopResult
+public struct StopServerOutput {
+    public let result: ServerStopResult
 }
 
-struct GetServerStatusInput {
-    let port: Int
+public struct GetServerStatusInput {
+    public let port: Int
+
+    public init(port: Int) {
+        self.port = port
+    }
 }
 
-struct GetServerStatusOutput {
-    let result: ServerStatusResult
+public struct GetServerStatusOutput {
+    public let result: ServerStatusResult
 }
 
-struct GetServerLogsInput {
-    let port: Int
-    let lines: Int
-    let follow: Bool
+public struct GetServerLogsInput {
+    public let port: Int
+    public let lines: Int
+    public let follow: Bool
+
+    public init(port: Int, lines: Int, follow: Bool) {
+        self.port = port
+        self.lines = lines
+        self.follow = follow
+    }
 }
 
-struct GetServerLogsOutput {
-    let result: ServerLogsResult
+public struct GetServerLogsOutput {
+    public let result: ServerLogsResult
 }
 
 /// Server operation handlers
 
-class StartServerHandler {
-    typealias Input = StartServerInput
-    typealias Output = StartServerOutput
+public class StartServerHandler {
+    public typealias Input = StartServerInput
+    public typealias Output = StartServerOutput
 
     private let service: ServerProcessServiceProtocol
 
-    init(service: ServerProcessServiceProtocol) {
+    public init(service: ServerProcessServiceProtocol) {
         self.service = service
     }
 
-    func handle(input: Input) async throws -> Output {
+    public func handle(input: Input) async throws -> Output {
         let result = try await service.startServer(config: input.config)
         return Output(result: result)
     }
 }
 
-class StopServerHandler {
-    typealias Input = StopServerInput
-    typealias Output = StopServerOutput
+public class StopServerHandler {
+    public typealias Input = StopServerInput
+    public typealias Output = StopServerOutput
 
     private let service: ServerProcessServiceProtocol
 
-    init(service: ServerProcessServiceProtocol) {
+    public init(service: ServerProcessServiceProtocol) {
         self.service = service
     }
 
-    func handle(input: Input) async throws -> Output {
+    public func handle(input: Input) async throws -> Output {
         let result = try await service.stopServer(port: input.port)
         return Output(result: result)
     }
 }
 
-class GetServerStatusHandler {
-    typealias Input = GetServerStatusInput
-    typealias Output = GetServerStatusOutput
+public class GetServerStatusHandler {
+    public typealias Input = GetServerStatusInput
+    public typealias Output = GetServerStatusOutput
 
     private let service: ServerProcessServiceProtocol
 
-    init(service: ServerProcessServiceProtocol) {
+    public init(service: ServerProcessServiceProtocol) {
         self.service = service
     }
 
-    func handle(input: Input) async throws -> Output {
+    public func handle(input: Input) async throws -> Output {
         let result = try await service.getServerStatus(port: input.port)
         return Output(result: result)
     }
 }
 
-class GetServerLogsHandler {
-    typealias Input = GetServerLogsInput
-    typealias Output = GetServerLogsOutput
+public class GetServerLogsHandler {
+    public typealias Input = GetServerLogsInput
+    public typealias Output = GetServerLogsOutput
 
     private let service: ServerProcessServiceProtocol
 
-    init(service: ServerProcessServiceProtocol) {
+    public init(service: ServerProcessServiceProtocol) {
         self.service = service
     }
 
-    func handle(input: Input) async throws -> Output {
+    public func handle(input: Input) async throws -> Output {
         let result = try await service.getServerLogs(port: input.port, lines: input.lines, follow: input.follow)
         return Output(result: result)
     }

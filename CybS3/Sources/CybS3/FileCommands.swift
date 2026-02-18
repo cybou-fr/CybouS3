@@ -50,7 +50,8 @@ struct FileCommands: AsyncParsableCommand {
                 vaultName: options.vault
             )
 
-            let handler = ListFilesHandler(fileService: FileServices.shared.fileOperationsService)
+            let fileService = DefaultFileOperationsService()
+            let handler = ListFilesHandler(fileService: fileService)
             let result = try await handler.handle(input: input)
 
             if !json {
@@ -126,7 +127,8 @@ struct FileCommands: AsyncParsableCommand {
                 vaultName: options.vault
             )
 
-            let handler = CopyFileHandler(fileService: FileServices.shared.fileOperationsService)
+            let fileService = DefaultFileOperationsService()
+            let handler = CopyFileHandler(fileService: fileService)
             let result = try await handler.handle(input: input)
 
             if result.success {
@@ -178,7 +180,8 @@ struct FileCommands: AsyncParsableCommand {
                 }
             )
 
-            let handler = GetFileHandler(fileService: FileServices.shared.fileOperationsService)
+            let fileService = DefaultFileOperationsService()
+            let handler = GetFileHandler(fileService: fileService)
             let result = try await handler.handle(input: input)
 
             if result.fileSize != nil && result.fileSize! > 0 {
@@ -258,7 +261,8 @@ struct FileCommands: AsyncParsableCommand {
                 vaultName: options.vault
             )
 
-            let handler = PutFileHandler(fileService: FileServices.shared.fileOperationsService)
+            let fileService = DefaultFileOperationsService()
+            let handler = PutFileHandler(fileService: fileService)
             let result = try await handler.handle(input: input)
 
             progressBar.complete()
@@ -316,7 +320,8 @@ struct FileCommands: AsyncParsableCommand {
                 vaultName: options.vault
             )
 
-            let handler = DeleteFileHandler(fileService: FileServices.shared.fileOperationsService)
+            let fileService = DefaultFileOperationsService()
+            let handler = DeleteFileHandler(fileService: fileService)
             let result = try await handler.handle(input: input)
 
             if result.success {

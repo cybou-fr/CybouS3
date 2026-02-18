@@ -29,6 +29,10 @@ public protocol CommandHandler {
 /// Input/output types for core commands
 public struct LoginInput {
     public let mnemonic: String
+
+    public init(mnemonic: String) {
+        self.mnemonic = mnemonic
+    }
 }
 
 public struct LoginOutput {
@@ -38,6 +42,7 @@ public struct LoginOutput {
 
 public struct LogoutInput {
     // No input needed
+    public init() {}
 }
 
 public struct LogoutOutput {
@@ -56,6 +61,19 @@ public struct ConfigInput {
     public let bucket: String?
     public let createVault: String?
     public let activeVault: String?
+
+    public init(mnemonic: String, list: Bool, reset: Bool, accessKey: String?, secretKey: String?, endpoint: String?, region: String?, bucket: String?, createVault: String?, activeVault: String?) {
+        self.mnemonic = mnemonic
+        self.list = list
+        self.reset = reset
+        self.accessKey = accessKey
+        self.secretKey = secretKey
+        self.endpoint = endpoint
+        self.region = region
+        self.bucket = bucket
+        self.createVault = createVault
+        self.activeVault = activeVault
+    }
 }
 
 public struct ConfigOutput {
@@ -79,8 +97,8 @@ public protocol ConfigurationServiceProtocol {
 }
 
 /// Default implementations using existing services
-class DefaultAuthenticationService: AuthenticationServiceProtocol {
-    func login(mnemonic: String) async throws -> LoginOutput {
+public class DefaultAuthenticationService: AuthenticationServiceProtocol {
+    public func login(mnemonic: String) async throws -> LoginOutput {
         // Verify it works by trying to load config
         _ = try StorageService.load(mnemonic: mnemonic.split(separator: " ").map(String.init))
 
@@ -92,7 +110,7 @@ class DefaultAuthenticationService: AuthenticationServiceProtocol {
         )
     }
 
-    func logout() async throws -> LogoutOutput {
+    public func logout() async throws -> LogoutOutput {
         do {
             try KeychainService.delete()
             return LogoutOutput(
@@ -113,13 +131,13 @@ class DefaultAuthenticationService: AuthenticationServiceProtocol {
     }
 }
 
-class DefaultConfigurationService: ConfigurationServiceProtocol {
-    func getConfig(mnemonic: String) async throws -> Configuration {
+public class DefaultConfigurationService: ConfigurationServiceProtocol {
+    public func getConfig(mnemonic: String) async throws -> Configuration {
         let (config, _) = try StorageService.load(mnemonic: mnemonic.split(separator: " ").map(String.init))
         return config
     }
 
-    func updateConfig(mnemonic: String, updates: ConfigInput) async throws -> ConfigOutput {
+    public func updateConfig(mnemonic: String, updates: ConfigInput) async throws -> ConfigOutput {
         var (config, dataKey) = try StorageService.load(mnemonic: mnemonic.split(separator: " ").map(String.init))
 
         // Update global settings
@@ -148,12 +166,12 @@ class DefaultConfigurationService: ConfigurationServiceProtocol {
         )
     }
 
-    func resetConfig() async throws {
+    public func resetConfig() async throws {
         // For now, just throw an error as reset is not implemented
         throw NSError(domain: "Configuration", code: -1, userInfo: [NSLocalizedDescriptionKey: "Reset not implemented"])
     }
 
-    func createVault(mnemonic: String, name: String) async throws {
+    public func createVault(mnemonic: String, name: String) async throws {
         var (config, dataKey) = try StorageService.load(mnemonic: mnemonic.split(separator: " ").map(String.init))
 
         if config.vaults.contains(where: { $0.name == name }) {
@@ -164,7 +182,7 @@ class DefaultConfigurationService: ConfigurationServiceProtocol {
         try StorageService.save(config: config, dataKey: dataKey)
     }
 
-    func setActiveVault(mnemonic: String, name: String) async throws {
+    public func setActiveVault(mnemonic: String, name: String) async throws {
         var (config, dataKey) = try StorageService.load(mnemonic: mnemonic.split(separator: " ").map(String.init))
 
         if !config.vaults.contains(where: { $0.name == name }) {
@@ -177,35 +195,47 @@ class DefaultConfigurationService: ConfigurationServiceProtocol {
 }
 
 /// Command handlers using the service layer
-struct LoginHandler: CommandHandler {
-    typealias Input = LoginInput
-    typealias Output = LoginOutput
+public struct LoginHandler: CommandHandler {
+    public typealias Input = LoginInput
+    public typealias Output = LoginOutput
 
-    let authService: AuthenticationServiceProtocol
+    public let authService: AuthenticationServiceProtocol
 
-    func handle(input: LoginInput) async throws -> LoginOutput {
+    public init(authService: AuthenticationServiceProtocol) {
+        self.authService = authService
+    }
+
+    public func handle(input: LoginInput) async throws -> LoginOutput {
         try await authService.login(mnemonic: input.mnemonic)
     }
 }
 
-struct LogoutHandler: CommandHandler {
-    typealias Input = LogoutInput
-    typealias Output = LogoutOutput
+public struct LogoutHandler: CommandHandler {
+    public typealias Input = LogoutInput
+    public typealias Output = LogoutOutput
 
-    let authService: AuthenticationServiceProtocol
+    public let authService: AuthenticationServiceProtocol
 
-    func handle(input: LogoutInput) async throws -> LogoutOutput {
+    public init(authService: AuthenticationServiceProtocol) {
+        self.authService = authService
+    }
+
+    public func handle(input: LogoutInput) async throws -> LogoutOutput {
         try await authService.logout()
     }
 }
 
-struct ConfigHandler: CommandHandler {
-    typealias Input = ConfigInput
-    typealias Output = ConfigOutput
+public struct ConfigHandler: CommandHandler {
+    public typealias Input = ConfigInput
+    public typealias Output = ConfigOutput
 
-    let configService: ConfigurationServiceProtocol
+    public let configService: ConfigurationServiceProtocol
 
-    func handle(input: ConfigInput) async throws -> ConfigOutput {
+    public init(configService: ConfigurationServiceProtocol) {
+        self.configService = configService
+    }
+
+    public func handle(input: ConfigInput) async throws -> ConfigOutput {
         if input.list {
             let config = try await configService.getConfig(mnemonic: input.mnemonic)
             return ConfigOutput(
@@ -250,10 +280,9 @@ struct ConfigHandler: CommandHandler {
 }
 
 /// Dependency container for services
-class CoreServices {
-    @MainActor
-    static let shared = CoreServices()
+public class CoreServices: @unchecked Sendable {
+    public static let shared = CoreServices()
 
-    lazy var authService: AuthenticationServiceProtocol = DefaultAuthenticationService()
-    lazy var configService: ConfigurationServiceProtocol = DefaultConfigurationService()
+    public lazy var authService: AuthenticationServiceProtocol = DefaultAuthenticationService()
+    public lazy var configService: ConfigurationServiceProtocol = DefaultConfigurationService()
 }

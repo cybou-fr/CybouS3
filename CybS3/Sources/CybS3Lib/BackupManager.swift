@@ -331,7 +331,7 @@ public actor BackupManager {
                     let backupObject = BackupObject(
                         key: object.key,
                         size: object.size,
-                        lastModified: object.lastModified ?? Date(),
+                        lastModified: object.lastModified,
                         etag: object.etag,
                         metadata: [
                             "backup_key": backupKey,

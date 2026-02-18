@@ -1,5 +1,6 @@
 import ArgumentParser
 import AsyncHTTPClient
+import CybS3Lib
 import Foundation
 import NIOCore
 

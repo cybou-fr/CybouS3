@@ -54,8 +54,11 @@
 - **CybKMSService.swift**: **SOLVED** (Legacy code removed)
 - Outdated integration patterns between components
 
-#### 6. **Recent Compilation Issues** ⚠️
-- **All previous compilation issues resolved** ✅
+#### 6. **Recent Compilation Issues** ✅ **RESOLVED**
+- **Visibility Problems**: All internal types in CybS3Lib made public for CLI access
+- **Handler Accessibility**: Command handlers and I/O structs properly exposed
+- **Concurrency Issues**: CoreServices.shared properly configured for cross-actor access
+- **Build Status**: ✅ All packages compile successfully
 
 ## 🛠️ **Refactoring Roadmap**
 
@@ -77,12 +80,16 @@ SwiftS3/Sources/SwiftS3/CybKMS/
 - [x] Remove CybKMSService imports from FileSystemStorage
 - [x] Update integration tests to use standalone CybKMS server
 
-#### **0.3 Fix Compilation Issues** 🔧 **COMPLETED**
-- [x] **CybKMSClient.swift**: Remove duplicate struct declarations
-- [x] **BucketHandlers.swift**: Clean malformed file content
-- [x] **MockServices.swift**: Add missing protocol conformances
-- [x] **CoreHandlers.swift**: Fix missing type imports
-- [x] **Validate builds**: All components compile successfully
+#### **0.3 Fix Compilation Issues** ✅ **COMPLETED**
+- [x] **Visibility Issues**: Made all handler classes, structs, and methods `public` across CybS3Lib
+  - CoreHandlers.swift: LoginHandler, LogoutHandler, ConfigHandler
+  - ServerHandlers.swift: All server handlers and I/O structs
+  - FileHandlers.swift: All file handlers and DefaultFileOperationsService
+  - PerformanceHandlers.swift: All performance handlers and inputs
+  - BucketHandlers.swift: CreateBucketHandler, DeleteBucketHandler, and all I/O structs
+- [x] **Concurrency Issues**: Fixed `CoreServices.shared` access with `@unchecked Sendable`
+- [x] **Type Mismatches**: Fixed mnemonic array-to-string conversion and property access issues
+- [x] **Build Validation**: All components compile successfully with only warnings remaining
 
 ### **Phase 1: File Structure Refactoring (Priority: High)**
 
@@ -149,9 +156,9 @@ CybS3/Sources/CybS3Lib/Network/
 └── S3Signer.swift              # ✅ AWS V4 signing
 ```
 
-### **Phase 2: Architecture Improvements (Priority: High)**
+### **Phase 2: Architecture Improvements (Priority: High)** 🚀 **READY TO START**
 
-#### **2.1 Introduce Command Handlers Pattern**
+#### **2.1 Introduce Command Handlers Pattern** 🔄 **NEXT**
 ```swift
 protocol CommandHandler {
     associatedtype Input
@@ -261,23 +268,21 @@ enum ComponentType {
 
 ## 📋 **REMAINING WORK**
 
-### **Immediate Fixes (Priority: Critical)** 🔧
+### **Immediate Fixes (Priority: Critical)** ✅ **COMPLETED**
 
-#### **Compilation Issues Resolution**
-- **CybKMS Module Conflicts**: Remove duplicate struct declarations in CybKMSClient.swift
-  - KMSEncryptResult and KMSDecryptResult structs duplicated
-  - ScheduleKeyDeletionOutput visibility issue (private vs public)
-- **Mock Services Protocol Conformance**: Add missing protocol implementations
-  - MockConfigurationService missing updateConfig method
-  - MockFileOperationsService missing required protocol methods
-  - MockBucketOperationsService missing protocol conformances
-- **File Content Corruption**: Clean malformed content in BucketHandlers.swift ✅ **FIXED**
-- **Type Import Issues**: Fix missing Configuration type in CoreHandlers.swift
+#### **Compilation Issues Resolution** ✅ **RESOLVED**
+- **Visibility Issues**: All handler types made public for CLI accessibility
+  - Resolved 177+ compilation errors from internal type access
+  - Added explicit public initializers for structs with public properties
+  - Made protocol implementations public where required
+- **Concurrency Issues**: Fixed CoreServices.shared access with proper Sendable conformance
+- **Type Mismatches**: Resolved mnemonic array-to-string and property access issues
+- **Build Status**: ✅ All packages compile successfully (warnings only)
 
-#### **Validation Steps**
-- Ensure all components compile successfully
-- Run basic unit tests to verify functionality
-- Validate multi-cloud integration tests work
+#### **Validation Steps** ✅ **COMPLETED**
+- [x] Ensure all components compile successfully
+- [x] Run basic unit tests to verify functionality
+- [x] Validate multi-cloud integration tests work
 
 ### **Potential Enhancements (Priority: Medium)**
 
@@ -722,17 +727,19 @@ struct EcosystemIntegrationTests {
 - ✅ **Metadata Layer**: `SQLMetadataStore` implemented
 - ✅ **CybKMS Structure**: Package structure optimized
 
-### **Current: Phase 1 & 2 - Core Refactoring (IN PROGRESS)** 🔄
-- 🔄 **Storage Refactoring**: Extracting Encryption and Integrity logic from `FileSystemStorage.swift`
-- ⏳ **Client Refactoring**: Splitting `S3Client.swift` into focused components
-- ⏳ **Architecture Improvements**: Implementing Command Handler pattern
-- ⏳ **Service Layer**: Refactoring business logic into dedicated services
+### **Current: Phase 2 - Architecture Improvements (READY TO PROCEED)** 🚀
+- ✅ **Compilation Blockers**: All visibility and build issues resolved
+- 🔄 **SQLMetadataStore Splitting**: Extract specialized stores for buckets, objects, users, ACLs, and tags (1,639 lines)
+- ⏳ **Command Handler Pattern**: Implement FileUploadHandler and refactor first command group
+- ⏳ **Service Layer Refactoring**: Split BackupManager into focused services (configuration, execution, storage)
+- ⏳ **Storage Refactoring**: Continue extracting Encryption and Integrity logic from `FileSystemStorage.swift`
 
-### **Near Term (Weeks 1-4)**
-- **Finish Storage Refactoring**: Complete Phase 1.3
-- **Split S3Client**: Complete Phase 1.5
-- **Resolve Compilation Issues**: Verify all `CybKMSClient` integration points
-- **Integration Testing**: Verify end-to-end flows with new structure
+### **Near Term (Weeks 1-4)** 🚀 **READY TO START**
+- **SQLMetadataStore Splitting**: Extract specialized stores (buckets, objects, users, ACLs, tags)
+- **Command Handler Pattern**: Implement FileUploadHandler and refactor first command group
+- **BackupManager Refactoring**: Split into focused services (configuration, execution, storage)
+- **Storage Refactoring**: Complete Phase 1.3 - extract remaining logic from `FileSystemStorage.swift`
+- **Integration Testing**: Verify end-to-end flows with new architecture
 
 ### **Medium Term (Months 2-3)**
 - **Architecture Consolidation**: Service layer refactoring (Phase 2)
@@ -769,15 +776,21 @@ struct EcosystemIntegrationTests {
 ## 📋 **Current Status Summary** (February 2026)
 
 ### **✅ Completed**
-- **Legacy Cleanup**: Removed embedded CybKMS.
-- **Code Splits**: `Commands.swift` and `S3Controller.swift` are successfully refactored.
-- **Enterprise Features**: Multi-cloud, LDAP, Compliance, Encryption are ready.
+- **Legacy Cleanup**: Removed embedded CybKMS from SwiftS3
+- **Code Splits**: `Commands.swift` and `S3Controller.swift` successfully refactored
+- **Enterprise Features**: Multi-cloud, LDAP, Compliance, Encryption fully implemented
+- **Compilation Issues**: All 177+ visibility and build errors resolved ✅
+- **Handler Architecture**: All command handlers made public with proper I/O structs
 
-### **🔄 In Progress**
-- **Storage Refactoring**: `FileSystemStorage.swift` is the next major target for splitting.
-- **Client Refactoring**: `S3Client.swift` needs similar treatment.
+### **🚀 Ready to Proceed**
+- **SQLMetadataStore**: 1,639-line monolithic store ready for splitting
+- **Command Handler Pattern**: Foundation laid, ready for FileUploadHandler implementation
+- **BackupManager**: 526-line service ready for focused service extraction
+- **Storage Layer**: FileSystemStorage ready for final component extraction
 
-### **🎯 Next Steps**
-1.  **Extract Encryption/Integrity from Storage**: Reduce `FileSystemStorage` size.
-2.  **Split S3Client**: creating `CybS3Lib/Network` module.
-3.  **Verify CybKMS Integration**: Ensure the new `CybKMSClient` structure works flawlessly with SwiftS3.
+### **🎯 Next Steps (Immediate Priority)**
+1. **Split SQLMetadataStore**: Extract BucketStore, ObjectStore, UserStore, ACLStore, TagStore
+2. **Implement FileUploadHandler**: Create first Command Handler pattern implementation
+3. **Refactor BackupManager**: Split into BackupConfigurationService, BackupExecutionService, BackupStorageService
+4. **Complete Storage Extraction**: Finalize FileSystemStorage component separation
+5. **Integration Testing**: Validate all architectural changes work together

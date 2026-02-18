@@ -17,6 +17,15 @@ public struct BenchmarkConfig {
     public let swiftS3Mode: Bool
     public let endpoint: String
     public let bucket: String
+
+    public init(duration: Int, concurrency: Int, fileSize: Int, swiftS3Mode: Bool, endpoint: String, bucket: String) {
+        self.duration = duration
+        self.concurrency = concurrency
+        self.fileSize = fileSize
+        self.swiftS3Mode = swiftS3Mode
+        self.endpoint = endpoint
+        self.bucket = bucket
+    }
 }
 
 /// Results from benchmark operations
@@ -45,8 +54,9 @@ public struct PerformanceReport {
 }
 
 /// Default implementation of performance testing service
-class DefaultPerformanceTestingService: PerformanceTestingServiceProtocol {
-    func runBenchmark(config: BenchmarkConfig) async throws -> BenchmarkResult {
+public class DefaultPerformanceTestingService: PerformanceTestingServiceProtocol {
+    public init() {}
+    public func runBenchmark(config: BenchmarkConfig) async throws -> BenchmarkResult {
         if config.swiftS3Mode {
             // This would run actual SwiftS3 benchmarks
             // For now, return a placeholder result
@@ -73,7 +83,7 @@ class DefaultPerformanceTestingService: PerformanceTestingServiceProtocol {
         }
     }
 
-    func checkRegression() async throws -> RegressionResult {
+    public func checkRegression() async throws -> RegressionResult {
         // This would compare current performance against baseline
         // For now, return a placeholder result
         return RegressionResult(
@@ -84,7 +94,7 @@ class DefaultPerformanceTestingService: PerformanceTestingServiceProtocol {
         )
     }
 
-    func updateBaseline() async throws -> BaselineUpdateResult {
+    public func updateBaseline() async throws -> BaselineUpdateResult {
         // This would update the performance baseline
         // For now, return a placeholder result
         return BaselineUpdateResult(
@@ -93,7 +103,7 @@ class DefaultPerformanceTestingService: PerformanceTestingServiceProtocol {
         )
     }
 
-    func generateReport() async throws -> PerformanceReport {
+    public func generateReport() async throws -> PerformanceReport {
         // This would generate a performance report
         // For now, return a placeholder result
         return PerformanceReport(
@@ -105,99 +115,106 @@ class DefaultPerformanceTestingService: PerformanceTestingServiceProtocol {
 
 /// Input/Output types for performance handlers
 
-struct RunBenchmarkInput {
-    let config: BenchmarkConfig
+public struct RunBenchmarkInput {
+    public let config: BenchmarkConfig
+
+    public init(config: BenchmarkConfig) {
+        self.config = config
+    }
 }
 
-struct RunBenchmarkOutput {
-    let result: BenchmarkResult
+public struct RunBenchmarkOutput {
+    public let result: BenchmarkResult
 }
 
-struct CheckRegressionInput {
+public struct CheckRegressionInput {
     // No specific input needed
+    public init() {}
 }
 
-struct CheckRegressionOutput {
-    let result: RegressionResult
+public struct CheckRegressionOutput {
+    public let result: RegressionResult
 }
 
-struct UpdateBaselineInput {
+public struct UpdateBaselineInput {
     // No specific input needed
+    public init() {}
 }
 
-struct UpdateBaselineOutput {
-    let result: BaselineUpdateResult
+public struct UpdateBaselineOutput {
+    public let result: BaselineUpdateResult
 }
 
-struct GenerateReportInput {
+public struct GenerateReportInput {
     // No specific input needed
+    public init() {}
 }
 
-struct GenerateReportOutput {
-    let result: PerformanceReport
+public struct GenerateReportOutput {
+    public let result: PerformanceReport
 }
 
 /// Performance operation handlers
 
-class RunBenchmarkHandler {
-    typealias Input = RunBenchmarkInput
-    typealias Output = RunBenchmarkOutput
+public class RunBenchmarkHandler {
+    public typealias Input = RunBenchmarkInput
+    public typealias Output = RunBenchmarkOutput
 
     private let service: PerformanceTestingServiceProtocol
 
-    init(service: PerformanceTestingServiceProtocol) {
+    public init(service: PerformanceTestingServiceProtocol) {
         self.service = service
     }
 
-    func handle(input: Input) async throws -> Output {
+    public func handle(input: Input) async throws -> Output {
         let result = try await service.runBenchmark(config: input.config)
         return Output(result: result)
     }
 }
 
-class CheckRegressionHandler {
-    typealias Input = CheckRegressionInput
-    typealias Output = CheckRegressionOutput
+public class CheckRegressionHandler {
+    public typealias Input = CheckRegressionInput
+    public typealias Output = CheckRegressionOutput
 
     private let service: PerformanceTestingServiceProtocol
 
-    init(service: PerformanceTestingServiceProtocol) {
+    public init(service: PerformanceTestingServiceProtocol) {
         self.service = service
     }
 
-    func handle(input: Input) async throws -> Output {
+    public func handle(input: Input) async throws -> Output {
         let result = try await service.checkRegression()
         return Output(result: result)
     }
 }
 
-class UpdateBaselineHandler {
-    typealias Input = UpdateBaselineInput
-    typealias Output = UpdateBaselineOutput
+public class UpdateBaselineHandler {
+    public typealias Input = UpdateBaselineInput
+    public typealias Output = UpdateBaselineOutput
 
     private let service: PerformanceTestingServiceProtocol
 
-    init(service: PerformanceTestingServiceProtocol) {
+    public init(service: PerformanceTestingServiceProtocol) {
         self.service = service
     }
 
-    func handle(input: Input) async throws -> Output {
+    public func handle(input: Input) async throws -> Output {
         let result = try await service.updateBaseline()
         return Output(result: result)
     }
 }
 
-class GenerateReportHandler {
-    typealias Input = GenerateReportInput
-    typealias Output = GenerateReportOutput
+public class GenerateReportHandler {
+    public typealias Input = GenerateReportInput
+    public typealias Output = GenerateReportOutput
 
     private let service: PerformanceTestingServiceProtocol
 
-    init(service: PerformanceTestingServiceProtocol) {
+    public init(service: PerformanceTestingServiceProtocol) {
         self.service = service
     }
 
-    func handle(input: Input) async throws -> Output {
+    public func handle(input: Input) async throws -> Output {
         let result = try await service.generateReport()
         return Output(result: result)
     }

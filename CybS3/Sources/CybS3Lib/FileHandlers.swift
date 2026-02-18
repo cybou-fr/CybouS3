@@ -9,6 +9,13 @@ public struct ListFilesInput {
     public let prefix: String?
     public let delimiter: String?
     public let vaultName: String?
+
+    public init(bucketName: String, prefix: String?, delimiter: String?, vaultName: String?) {
+        self.bucketName = bucketName
+        self.prefix = prefix
+        self.delimiter = delimiter
+        self.vaultName = vaultName
+    }
 }
 
 public struct ListFilesOutput {
@@ -23,6 +30,14 @@ public struct GetFileInput {
     public let localPath: String?
     public let vaultName: String?
     public let progressCallback: ((Int) -> Void)?
+
+    public init(bucketName: String, key: String, localPath: String?, vaultName: String?, progressCallback: ((Int) -> Void)?) {
+        self.bucketName = bucketName
+        self.key = key
+        self.localPath = localPath
+        self.vaultName = vaultName
+        self.progressCallback = progressCallback
+    }
 }
 
 public struct GetFileOutput {
@@ -38,6 +53,14 @@ public struct PutFileInput {
     public let remoteKey: String
     public let dryRun: Bool
     public let vaultName: String?
+
+    public init(bucketName: String, localPath: String, remoteKey: String, dryRun: Bool, vaultName: String?) {
+        self.bucketName = bucketName
+        self.localPath = localPath
+        self.remoteKey = remoteKey
+        self.dryRun = dryRun
+        self.vaultName = vaultName
+    }
 }
 
 public struct PutFileOutput {
@@ -52,6 +75,13 @@ public struct DeleteFileInput {
     public let key: String
     public let force: Bool
     public let vaultName: String?
+
+    public init(bucketName: String, key: String, force: Bool, vaultName: String?) {
+        self.bucketName = bucketName
+        self.key = key
+        self.force = force
+        self.vaultName = vaultName
+    }
 }
 
 public struct DeleteFileOutput {
@@ -64,6 +94,13 @@ public struct CopyFileInput {
     public let sourceKey: String
     public let destKey: String
     public let vaultName: String?
+
+    public init(bucketName: String, sourceKey: String, destKey: String, vaultName: String?) {
+        self.bucketName = bucketName
+        self.sourceKey = sourceKey
+        self.destKey = destKey
+        self.vaultName = vaultName
+    }
 }
 
 public struct CopyFileOutput {
@@ -81,7 +118,8 @@ public protocol FileOperationsServiceProtocol {
 }
 
 /// Default implementation using existing S3Client
-class DefaultFileOperationsService: FileOperationsServiceProtocol {
+public class DefaultFileOperationsService: FileOperationsServiceProtocol {
+    public init() {}
     private struct ClientInfo {
         let client: S3Client
         let dataKey: SymmetricKey
@@ -122,7 +160,7 @@ class DefaultFileOperationsService: FileOperationsServiceProtocol {
             bucketName: bucket
         )
     }
-    func listFiles(input: ListFilesInput) async throws -> ListFilesOutput {
+    public func listFiles(input: ListFilesInput) async throws -> ListFilesOutput {
         let clientInfo = try createClient(bucket: input.bucketName, vault: input.vaultName)
         
         do {
@@ -136,7 +174,7 @@ class DefaultFileOperationsService: FileOperationsServiceProtocol {
         try? await clientInfo.client.shutdown()
     }
 
-    func getFile(input: GetFileInput) async throws -> GetFileOutput {
+    public func getFile(input: GetFileInput) async throws -> GetFileOutput {
         let clientInfo = try createClient(bucket: input.bucketName, vault: input.vaultName)
         
         do {
@@ -182,7 +220,7 @@ class DefaultFileOperationsService: FileOperationsServiceProtocol {
         try? await clientInfo.client.shutdown()
     }
 
-    func putFile(input: PutFileInput) async throws -> PutFileOutput {
+    public func putFile(input: PutFileInput) async throws -> PutFileOutput {
         let fileURL = URL(fileURLWithPath: input.localPath)
         guard FileManager.default.fileExists(atPath: input.localPath) else {
             throw FileOperationError.fileNotFound(input.localPath)
@@ -237,7 +275,7 @@ class DefaultFileOperationsService: FileOperationsServiceProtocol {
         try? await clientInfo.client.shutdown()
     }
 
-    func deleteFile(input: DeleteFileInput) async throws -> DeleteFileOutput {
+    public func deleteFile(input: DeleteFileInput) async throws -> DeleteFileOutput {
         let clientInfo = try createClient(bucket: input.bucketName, vault: input.vaultName)
         
         do {
@@ -255,7 +293,7 @@ class DefaultFileOperationsService: FileOperationsServiceProtocol {
         try? await clientInfo.client.shutdown()
     }
 
-    func copyFile(input: CopyFileInput) async throws -> CopyFileOutput {
+    public func copyFile(input: CopyFileInput) async throws -> CopyFileOutput {
         let clientInfo = try createClient(bucket: input.bucketName, vault: input.vaultName)
         
         do {
@@ -287,57 +325,77 @@ enum FileOperationError: LocalizedError {
 }
 
 /// Command handlers using the service layer
-struct ListFilesHandler: CommandHandler {
-    typealias Input = ListFilesInput
-    typealias Output = ListFilesOutput
+public struct ListFilesHandler: CommandHandler {
+    public typealias Input = ListFilesInput
+    public typealias Output = ListFilesOutput
 
-    let fileService: FileOperationsServiceProtocol
+    public let fileService: FileOperationsServiceProtocol
 
-    func handle(input: ListFilesInput) async throws -> ListFilesOutput {
+    public init(fileService: FileOperationsServiceProtocol) {
+        self.fileService = fileService
+    }
+
+    public func handle(input: ListFilesInput) async throws -> ListFilesOutput {
         try await fileService.listFiles(input: input)
     }
 }
 
-struct GetFileHandler: CommandHandler {
-    typealias Input = GetFileInput
-    typealias Output = GetFileOutput
+public struct GetFileHandler: CommandHandler {
+    public typealias Input = GetFileInput
+    public typealias Output = GetFileOutput
 
-    let fileService: FileOperationsServiceProtocol
+    public let fileService: FileOperationsServiceProtocol
 
-    func handle(input: GetFileInput) async throws -> GetFileOutput {
+    public init(fileService: FileOperationsServiceProtocol) {
+        self.fileService = fileService
+    }
+
+    public func handle(input: GetFileInput) async throws -> GetFileOutput {
         try await fileService.getFile(input: input)
     }
 }
 
-struct PutFileHandler: CommandHandler {
-    typealias Input = PutFileInput
-    typealias Output = PutFileOutput
+public struct PutFileHandler: CommandHandler {
+    public typealias Input = PutFileInput
+    public typealias Output = PutFileOutput
 
-    let fileService: FileOperationsServiceProtocol
+    public let fileService: FileOperationsServiceProtocol
 
-    func handle(input: PutFileInput) async throws -> PutFileOutput {
+    public init(fileService: FileOperationsServiceProtocol) {
+        self.fileService = fileService
+    }
+
+    public func handle(input: PutFileInput) async throws -> PutFileOutput {
         try await fileService.putFile(input: input)
     }
 }
 
-struct DeleteFileHandler: CommandHandler {
-    typealias Input = DeleteFileInput
-    typealias Output = DeleteFileOutput
+public struct DeleteFileHandler: CommandHandler {
+    public typealias Input = DeleteFileInput
+    public typealias Output = DeleteFileOutput
 
-    let fileService: FileOperationsServiceProtocol
+    public let fileService: FileOperationsServiceProtocol
 
-    func handle(input: DeleteFileInput) async throws -> DeleteFileOutput {
+    public init(fileService: FileOperationsServiceProtocol) {
+        self.fileService = fileService
+    }
+
+    public func handle(input: DeleteFileInput) async throws -> DeleteFileOutput {
         try await fileService.deleteFile(input: input)
     }
 }
 
-struct CopyFileHandler: CommandHandler {
-    typealias Input = CopyFileInput
-    typealias Output = CopyFileOutput
+public struct CopyFileHandler: CommandHandler {
+    public typealias Input = CopyFileInput
+    public typealias Output = CopyFileOutput
 
-    let fileService: FileOperationsServiceProtocol
+    public let fileService: FileOperationsServiceProtocol
 
-    func handle(input: CopyFileInput) async throws -> CopyFileOutput {
+    public init(fileService: FileOperationsServiceProtocol) {
+        self.fileService = fileService
+    }
+
+    public func handle(input: CopyFileInput) async throws -> CopyFileOutput {
         try await fileService.copyFile(input: input)
     }
 }

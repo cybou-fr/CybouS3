@@ -112,7 +112,7 @@ struct BucketCommands: AsyncParsableCommand {
             if output.json {
                 let encoder = JSONEncoder()
                 encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-                let data = try encoder.encode(["buckets": output.buckets])
+                let data = try encoder.encode(["buckets": output.buckets] as [String: [String]])
                 print(String(data: data, encoding: .utf8) ?? "[]")
             } else {
                 print("Using vault: \(output.vaultName ?? "default")")
