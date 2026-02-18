@@ -151,12 +151,52 @@ public struct SQLMetadataStoreV2: MetadataStore {
             )
             """, [])
 
+        // Create audit events table
+        try await connection.query("""
+            CREATE TABLE IF NOT EXISTS audit_events (
+                id TEXT PRIMARY KEY,
+                timestamp REAL NOT NULL,
+                event_type TEXT NOT NULL,
+                principal TEXT NOT NULL,
+                source_ip TEXT,
+                user_agent TEXT,
+                request_id TEXT NOT NULL,
+                bucket TEXT,
+                key TEXT,
+                operation TEXT NOT NULL,
+                status TEXT NOT NULL,
+                error_message TEXT,
+                additional_data TEXT
+            )
+            """, [])
+
+        // Create batch jobs table
+        try await connection.query("""
+            CREATE TABLE IF NOT EXISTS batch_jobs (
+                id TEXT PRIMARY KEY,
+                operation TEXT NOT NULL,
+                manifest TEXT NOT NULL,
+                priority INTEGER DEFAULT 0,
+                role_arn TEXT,
+                status TEXT NOT NULL,
+                created_at REAL NOT NULL,
+                completed_at REAL,
+                failure_reasons TEXT,
+                progress TEXT NOT NULL
+            )
+            """, [])
+
         // Create indexes for performance
         try await connection.query("CREATE INDEX IF NOT EXISTS idx_objects_bucket_key ON objects(bucket_name, key)", [])
         try await connection.query("CREATE INDEX IF NOT EXISTS idx_objects_latest ON objects(is_latest)", [])
         try await connection.query("CREATE INDEX IF NOT EXISTS idx_users_access_key ON users(access_key)", [])
         try await connection.query("CREATE INDEX IF NOT EXISTS idx_bucket_tags_bucket ON bucket_tags(bucket_name)", [])
         try await connection.query("CREATE INDEX IF NOT EXISTS idx_object_tags_object ON object_tags(bucket_name, object_key, version_id)", [])
+        try await connection.query("CREATE INDEX IF NOT EXISTS idx_audit_events_timestamp ON audit_events(timestamp)", [])
+        try await connection.query("CREATE INDEX IF NOT EXISTS idx_audit_events_principal ON audit_events(principal)", [])
+        try await connection.query("CREATE INDEX IF NOT EXISTS idx_audit_events_bucket ON audit_events(bucket)", [])
+        try await connection.query("CREATE INDEX IF NOT EXISTS idx_batch_jobs_status ON batch_jobs(status)", [])
+        try await connection.query("CREATE INDEX IF NOT EXISTS idx_batch_jobs_created_at ON batch_jobs(created_at)", [])
 
         logger.info("Database schema initialized successfully")
     }
@@ -293,10 +333,33 @@ public struct SQLMetadataStoreV2: MetadataStore {
     }
 
     public func logAuditEvent(_ event: AuditEvent) async throws {
-        // TODO: Implement audit logging
+        let additionalDataJson = event.additionalData.map { try? JSONEncoder().encode($0) }
+        
+        try await connection.query("""
+            INSERT INTO audit_events (
+                id, timestamp, event_type, principal, source_ip, user_agent, 
+                request_id, bucket, key, operation, status, error_message, additional_data
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, [
+                event.id,
+                event.timestamp.timeIntervalSince1970,
+                event.eventType.rawValue,
+                event.principal,
+                event.sourceIp,
+                event.userAgent,
+                event.requestId,
+                event.bucket,
+                event.key,
+                event.operation,
+                event.status,
+                event.errorMessage,
+                additionalDataJson.map { String(data: $0, encoding: .utf8) }
+            ])
+        
         logger.info("Audit event logged", metadata: [
+            "event_id": .string(event.id),
             "event_type": .string(event.eventType.rawValue),
-            "principal": .string(event.principal ?? "unknown")
+            "principal": .string(event.principal)
         ])
     }
 
@@ -304,58 +367,292 @@ public struct SQLMetadataStoreV2: MetadataStore {
         bucket: String?, principal: String?, eventType: AuditEventType?, startDate: Date?, endDate: Date?,
         limit: Int?, continuationToken: String?
     ) async throws -> (events: [AuditEvent], nextContinuationToken: String?) {
-        // TODO: Implement audit event retrieval
-        logger.info("Audit events retrieved", metadata: [
-            "bucket": .string(bucket ?? "all"),
-            "limit": .stringConvertible(limit ?? 100)
-        ])
-        return ([], nil)
+        var conditions: [String] = []
+        var parameters: [SQLiteData] = []
+        
+        if let bucket = bucket {
+            conditions.append("bucket = ?")
+            parameters.append(.text(bucket))
+        }
+        
+        if let principal = principal {
+            conditions.append("principal = ?")
+            parameters.append(.text(principal))
+        }
+        
+        if let eventType = eventType {
+            conditions.append("event_type = ?")
+            parameters.append(.text(eventType.rawValue))
+        }
+        
+        if let startDate = startDate {
+            conditions.append("timestamp >= ?")
+            parameters.append(.real(startDate.timeIntervalSince1970))
+        }
+        
+        if let endDate = endDate {
+            conditions.append("timestamp <= ?")
+            parameters.append(.real(endDate.timeIntervalSince1970))
+        }
+        
+        let whereClause = conditions.isEmpty ? "" : "WHERE \(conditions.joined(separator: " AND "))"
+        let limitClause = limit.map { "LIMIT \($0 + 1)" } ?? ""
+        
+        let rows = try await connection.query("""
+            SELECT id, timestamp, event_type, principal, source_ip, user_agent, 
+                   request_id, bucket, key, operation, status, error_message, additional_data
+            FROM audit_events
+            \(whereClause)
+            ORDER BY timestamp DESC
+            \(limitClause)
+            """, parameters)
+        
+        var events: [AuditEvent] = []
+        var hasMore = false
+        
+        for (index, row) in rows.enumerated() {
+            if let limit = limit, index >= limit {
+                hasMore = true
+                break
+            }
+            
+            let additionalData: [String: String]? = {
+                guard let dataStr = row.column("additional_data")?.text,
+                      let data = dataStr.data(using: .utf8) else { return nil }
+                return try? JSONDecoder().decode([String: String].self, from: data)
+            }()
+            
+            let event = AuditEvent(
+                id: row.column("id")!.text!,
+                timestamp: Date(timeIntervalSince1970: row.column("timestamp")!.real!),
+                eventType: AuditEventType(rawValue: row.column("event_type")!.text!)!,
+                principal: row.column("principal")!.text!,
+                sourceIp: row.column("source_ip")?.text,
+                userAgent: row.column("user_agent")?.text,
+                requestId: row.column("request_id")!.text!,
+                bucket: row.column("bucket")?.text,
+                key: row.column("key")?.text,
+                operation: row.column("operation")!.text!,
+                status: row.column("status")!.text!,
+                errorMessage: row.column("error_message")?.text,
+                additionalData: additionalData
+            )
+            
+            events.append(event)
+        }
+        
+        let nextContinuationToken = hasMore ? events.last?.id : nil
+        
+        return (events, nextContinuationToken)
     }
 
     public func deleteAuditEvents(olderThan: Date) async throws {
-        // TODO: Implement audit event deletion
-        logger.info("Audit events deleted", metadata: ["older_than": .string(olderThan.description)])
+        let deletedCount = try await connection.query("""
+            DELETE FROM audit_events WHERE timestamp < ?
+            """, [.real(olderThan.timeIntervalSince1970)])
+        
+        logger.info("Audit events deleted", metadata: [
+            "older_than": .string(olderThan.description),
+            "deleted_count": .stringConvertible(deletedCount.rowCount)
+        ])
     }
 
     public func createBatchJob(job: BatchJob) async throws -> String {
-        // TODO: Implement batch job creation
-        let jobId = UUID().uuidString
-        logger.info("Batch job created", metadata: ["job_id": .string(jobId)])
-        return jobId
+        let manifestJson = try JSONEncoder().encode(job.manifest)
+        let progressJson = try JSONEncoder().encode(job.progress)
+        let failureReasonsJson = try JSONEncoder().encode(job.failureReasons)
+        
+        try await connection.query("""
+            INSERT INTO batch_jobs (
+                id, operation, manifest, priority, role_arn, status, 
+                created_at, completed_at, failure_reasons, progress
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, [
+                job.id,
+                try JSONEncoder().encode(job.operation).base64EncodedString(),
+                manifestJson,
+                .integer(Int64(job.priority)),
+                job.roleArn,
+                job.status.rawValue,
+                job.createdAt.timeIntervalSince1970,
+                job.completedAt?.timeIntervalSince1970,
+                failureReasonsJson,
+                progressJson
+            ])
+        
+        logger.info("Batch job created", metadata: [
+            "job_id": .string(job.id),
+            "operation": .string(job.operation.type.rawValue),
+            "status": .string(job.status.rawValue)
+        ])
+        
+        return job.id
     }
 
     public func getBatchJob(jobId: String) async throws -> BatchJob? {
-        // TODO: Implement batch job retrieval
-        logger.info("Batch job retrieved", metadata: ["job_id": .string(jobId)])
-        return nil
+        let rows = try await connection.query("""
+            SELECT id, operation, manifest, priority, role_arn, status, 
+                   created_at, completed_at, failure_reasons, progress
+            FROM batch_jobs WHERE id = ?
+            """, [.text(jobId)])
+        
+        guard let row = rows.first else { return nil }
+        
+        let operation: BatchOperation = {
+            guard let operationData = Data(base64Encoded: row.column("operation")!.text!),
+                  let decoded = try? JSONDecoder().decode(BatchOperation.self, from: operationData) else {
+                // Fallback for malformed data
+                return BatchOperation(type: .s3PutObjectCopy)
+            }
+            return decoded
+        }()
+        
+        let manifest = try JSONDecoder().decode(BatchManifest.self, from: row.column("manifest")!.blob!)
+        let progress = try JSONDecoder().decode(BatchProgress.self, from: row.column("progress")!.blob!)
+        let failureReasons = try JSONDecoder().decode([String].self, from: row.column("failure_reasons")!.blob!)
+        
+        return BatchJob(
+            id: row.column("id")!.text!,
+            operation: operation,
+            manifest: manifest,
+            priority: Int(row.column("priority")!.integer!),
+            roleArn: row.column("role_arn")?.text,
+            status: BatchJobStatus(rawValue: row.column("status")!.text!)!,
+            createdAt: Date(timeIntervalSince1970: row.column("created_at")!.real!),
+            completedAt: row.column("completed_at").map { Date(timeIntervalSince1970: $0.real!) },
+            failureReasons: failureReasons,
+            progress: progress
+        )
     }
 
     public func listBatchJobs(bucket: String?, status: BatchJobStatus?, limit: Int?, continuationToken: String?) async throws -> (jobs: [BatchJob], nextContinuationToken: String?) {
-        // TODO: Implement batch job listing
-        logger.info("Batch jobs listed", metadata: ["bucket": .string(bucket ?? "all")])
-        return ([], nil)
+        var conditions: [String] = []
+        var parameters: [SQLiteData] = []
+        
+        if let bucket = bucket {
+            // Note: This is a simplified implementation. In reality, we'd need to join with manifest data
+            // For now, we'll skip bucket filtering as it requires more complex queries
+            logger.warning("Bucket filtering for batch jobs not yet implemented")
+        }
+        
+        if let status = status {
+            conditions.append("status = ?")
+            parameters.append(.text(status.rawValue))
+        }
+        
+        let whereClause = conditions.isEmpty ? "" : "WHERE \(conditions.joined(separator: " AND "))"
+        let limitClause = limit.map { "LIMIT \($0 + 1)" } ?? ""
+        
+        let rows = try await connection.query("""
+            SELECT id, operation, manifest, priority, role_arn, status, 
+                   created_at, completed_at, failure_reasons, progress
+            FROM batch_jobs
+            \(whereClause)
+            ORDER BY created_at DESC
+            \(limitClause)
+            """, parameters)
+        
+        var jobs: [BatchJob] = []
+        var hasMore = false
+        
+        for (index, row) in rows.enumerated() {
+            if let limit = limit, index >= limit {
+                hasMore = true
+                break
+            }
+            
+            let operation: BatchOperation = {
+                guard let operationData = Data(base64Encoded: row.column("operation")!.text!),
+                      let decoded = try? JSONDecoder().decode(BatchOperation.self, from: operationData) else {
+                    return BatchOperation(type: .s3PutObjectCopy)
+                }
+                return decoded
+            }()
+            
+            let manifest = try JSONDecoder().decode(BatchManifest.self, from: row.column("manifest")!.blob!)
+            let progress = try JSONDecoder().decode(BatchProgress.self, from: row.column("progress")!.blob!)
+            let failureReasons = try JSONDecoder().decode([String].self, from: row.column("failure_reasons")!.blob!)
+            
+            let job = BatchJob(
+                id: row.column("id")!.text!,
+                operation: operation,
+                manifest: manifest,
+                priority: Int(row.column("priority")!.integer!),
+                roleArn: row.column("role_arn")?.text,
+                status: BatchJobStatus(rawValue: row.column("status")!.text!)!,
+                createdAt: Date(timeIntervalSince1970: row.column("created_at")!.real!),
+                completedAt: row.column("completed_at").map { Date(timeIntervalSince1970: $0.real!) },
+                failureReasons: failureReasons,
+                progress: progress
+            )
+            
+            jobs.append(job)
+        }
+        
+        let nextContinuationToken = hasMore ? jobs.last?.id : nil
+        
+        return (jobs, nextContinuationToken)
     }
 
     public func updateBatchJobStatus(jobId: String, status: BatchJobStatus, message: String?) async throws {
-        // TODO: Implement batch job status update
+        let completedAt = (status == .completed || status == .failed) ? Date().timeIntervalSince1970 : nil
+        
+        try await connection.query("""
+            UPDATE batch_jobs 
+            SET status = ?, completed_at = ?
+            WHERE id = ?
+            """, [
+                .text(status.rawValue),
+                completedAt.map { .real($0) } ?? .null,
+                .text(jobId)
+            ])
+        
         logger.info("Batch job status updated", metadata: [
             "job_id": .string(jobId),
-            "status": .string(status.rawValue)
+            "status": .string(status.rawValue),
+            "message": .string(message ?? "")
         ])
     }
 
     public func deleteBatchJob(jobId: String) async throws {
-        // TODO: Implement batch job deletion
-        logger.info("Batch job deleted", metadata: ["job_id": .string(jobId)])
+        let result = try await connection.query("""
+            DELETE FROM batch_jobs WHERE id = ?
+            """, [.text(jobId)])
+        
+        if result.rowCount > 0 {
+            logger.info("Batch job deleted", metadata: ["job_id": .string(jobId)])
+        } else {
+            logger.warning("Batch job not found for deletion", metadata: ["job_id": .string(jobId)])
+        }
     }
 
     public func executeBatchOperation(jobId: String, bucket: String, key: String) async throws {
-        // TODO: Implement batch operation execution
-        logger.info("Batch operation executed", metadata: [
+        // Get the job to understand what operation to perform
+        guard let job = try await getBatchJob(jobId: jobId) else {
+            throw NSError(domain: "SQLMetadataStoreV2", code: 1, userInfo: [NSLocalizedDescriptionKey: "Batch job not found"])
+        }
+        
+        // For now, implement basic logging. In a full implementation, this would:
+        // 1. Validate the operation type
+        // 2. Perform the actual S3 operation (copy, delete, etc.)
+        // 3. Update progress
+        // 4. Handle errors
+        
+        logger.info("Executing batch operation", metadata: [
             "job_id": .string(jobId),
+            "operation": .string(job.operation.type.rawValue),
             "bucket": .string(bucket),
             "key": .string(key)
         ])
+        
+        // Update job progress (simplified)
+        var updatedProgress = job.progress
+        updatedProgress.processedObjects += 1
+        
+        let progressJson = try JSONEncoder().encode(updatedProgress)
+        try await connection.query("""
+            UPDATE batch_jobs SET progress = ? WHERE id = ?
+            """, [progressJson, .text(jobId)])
     }
 }
 

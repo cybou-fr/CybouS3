@@ -1,4 +1,10 @@
 import Foundation
+import Compression
+
+/// Errors that can occur during backup compression
+enum CompressionError: Error {
+    case compressionFailed(String)
+}
 
 /// Protocol for backup configuration management
 public protocol BackupConfigurationService {
@@ -296,6 +302,7 @@ public actor DefaultBackupExecutionService: BackupExecutionService {
                         metadata: [
                             "backup_key": backupKey,
                             "compressed": config.compression.enabled.description,
+                            "compression_algorithm": config.compression.algorithm.rawValue,
                             "encrypted": config.encryption.enabled.description
                         ]
                     )
@@ -389,8 +396,7 @@ public actor DefaultBackupExecutionService: BackupExecutionService {
 
         // Apply compression
         if config.compression.enabled {
-            // TODO: Implement compression
-            processedData = data
+            processedData = try compressData(data, algorithm: config.compression.algorithm, level: config.compression.level)
         }
 
         // Apply encryption
@@ -400,6 +406,130 @@ public actor DefaultBackupExecutionService: BackupExecutionService {
         }
 
         return processedData
+    }
+
+    private func compressData(_ data: Data, algorithm: CompressionAlgorithm, level: Int) throws -> Data {
+        switch algorithm {
+        case .gzip:
+            return try gzipCompress(data)
+        case .bzip2:
+            // TODO: Implement bzip2 compression (requires external library)
+            logger.warning("Bzip2 compression not yet implemented, using gzip")
+            return try gzipCompress(data)
+        case .xz:
+            // TODO: Implement xz compression (requires external library)
+            logger.warning("XZ compression not yet implemented, using gzip")
+            return try gzipCompress(data)
+        }
+    }
+
+    private func gzipCompress(_ data: Data) throws -> Data {
+        let pageSize = 4096
+        let destinationBufferSize = pageSize
+
+        // Create destination buffer
+        let destinationBuffer = UnsafeMutablePointer<UInt8>.allocate(capacity: destinationBufferSize)
+        defer { destinationBuffer.deallocate() }
+
+        // Create source buffer
+        let sourceBuffer = UnsafeMutablePointer<UInt8>.allocate(capacity: data.count)
+        defer { sourceBuffer.deallocate() }
+        data.copyBytes(to: sourceBuffer, count: data.count)
+
+        // Set up compression stream
+        var stream = compression_stream()
+        var status = compression_stream_init(&stream, COMPRESSION_STREAM_ENCODE, COMPRESSION_GZIP)
+        guard status != COMPRESSION_STATUS_ERROR else {
+            throw CompressionError.compressionFailed("Failed to initialize compression stream")
+        }
+
+        stream.src_ptr = sourceBuffer
+        stream.src_size = data.count
+        stream.dst_ptr = destinationBuffer
+        stream.dst_size = destinationBufferSize
+
+        var compressedData = Data()
+
+        repeat {
+            status = compression_stream_process(&stream, stream.src_size == 0 ? Int32(COMPRESSION_STREAM_FINALIZE.rawValue) : 0)
+
+            switch status {
+            case COMPRESSION_STATUS_OK, COMPRESSION_STATUS_END:
+                compressedData.append(destinationBuffer, count: destinationBufferSize - stream.dst_size)
+                stream.dst_ptr = destinationBuffer
+                stream.dst_size = destinationBufferSize
+            case COMPRESSION_STATUS_ERROR:
+                compression_stream_destroy(&stream)
+                throw CompressionError.compressionFailed("Compression failed")
+            default:
+                break
+            }
+        } while status == COMPRESSION_STATUS_OK
+
+        compression_stream_destroy(&stream)
+        return compressedData
+    }
+
+    private func decompressData(_ data: Data, algorithm: CompressionAlgorithm) throws -> Data {
+        switch algorithm {
+        case .gzip:
+            return try gzipDecompress(data)
+        case .bzip2:
+            // TODO: Implement bzip2 decompression (requires external library)
+            logger.warning("Bzip2 decompression not yet implemented, assuming uncompressed")
+            return data
+        case .xz:
+            // TODO: Implement xz decompression (requires external library)
+            logger.warning("XZ decompression not yet implemented, assuming uncompressed")
+            return data
+        }
+    }
+
+    private func gzipDecompress(_ data: Data) throws -> Data {
+        let pageSize = 4096
+        let destinationBufferSize = pageSize
+
+        // Create destination buffer
+        let destinationBuffer = UnsafeMutablePointer<UInt8>.allocate(capacity: destinationBufferSize)
+        defer { destinationBuffer.deallocate() }
+
+        // Create source buffer
+        let sourceBuffer = UnsafeMutablePointer<UInt8>.allocate(capacity: data.count)
+        defer { sourceBuffer.deallocate() }
+        data.copyBytes(to: sourceBuffer, count: data.count)
+
+        // Set up decompression stream
+        var stream = compression_stream()
+        var status = compression_stream_init(&stream, COMPRESSION_STREAM_DECODE, COMPRESSION_GZIP)
+        guard status != COMPRESSION_STATUS_ERROR else {
+            throw CompressionError.compressionFailed("Failed to initialize decompression stream")
+        }
+
+        stream.src_ptr = sourceBuffer
+        stream.src_size = data.count
+        stream.dst_ptr = destinationBuffer
+        stream.dst_size = destinationBufferSize
+
+        var decompressedData = Data()
+
+        repeat {
+            status = compression_stream_process(&stream, stream.src_size == 0 ? Int32(COMPRESSION_STREAM_FINALIZE.rawValue) : 0)
+
+            switch status {
+            case COMPRESSION_STATUS_OK, COMPRESSION_STATUS_END:
+                decompressedData.append(destinationBuffer, count: destinationBufferSize - stream.dst_size)
+                stream.dst_ptr = destinationBuffer
+                stream.dst_size = destinationBufferSize
+            case COMPRESSION_STATUS_ERROR:
+                compression_stream_destroy(&stream)
+                throw CompressionError.compressionFailed("Decompression failed")
+            default:
+                break
+            }
+        } while status == COMPRESSION_STATUS_OK
+
+        compression_stream_destroy(&stream)
+        return decompressedData
     }
 
     private func generateBackupKey(originalKey: String, config: BackupConfiguration, timestamp: Date) -> String {

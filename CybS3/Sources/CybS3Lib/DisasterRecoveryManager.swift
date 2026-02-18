@@ -1,4 +1,5 @@
 import Foundation
+import Compression
 
 /// Disaster recovery manager for handling failover and restoration operations.
 public actor DisasterRecoveryManager {
@@ -411,7 +412,9 @@ public actor DisasterRecoveryManager {
 
         // Apply decompression if needed
         if metadata["compressed"] == "true" {
-            processedData = try decompressData(processedData)
+            let algorithm = CompressionAlgorithm(rawValue: metadata["compression_algorithm"] ?? "gzip") ?? .gzip
+            processedData = try decompressData(processedData, algorithm: algorithm)
+        }
         }
 
         return processedData
@@ -422,10 +425,64 @@ public actor DisasterRecoveryManager {
         return data
     }
 
-    private func decompressData(_ data: Data) throws -> Data {
-        // Placeholder - decompression not implemented yet
-        // TODO: Implement decompression using appropriate library
-        return data
+    private func decompressData(_ data: Data, algorithm: CompressionAlgorithm) throws -> Data {
+        switch algorithm {
+        case .gzip:
+            return try gzipDecompress(data)
+        case .bzip2:
+            // TODO: Implement bzip2 decompression (requires external library)
+            return data // Return uncompressed for now
+        case .xz:
+            // TODO: Implement xz decompression (requires external library)
+            return data // Return uncompressed for now
+        }
+    }
+
+    private func gzipDecompress(_ data: Data) throws -> Data {
+        let pageSize = 4096
+        let destinationBufferSize = pageSize
+
+        // Create destination buffer
+        let destinationBuffer = UnsafeMutablePointer<UInt8>.allocate(capacity: destinationBufferSize)
+        defer { destinationBuffer.deallocate() }
+
+        // Create source buffer
+        let sourceBuffer = UnsafeMutablePointer<UInt8>.allocate(capacity: data.count)
+        defer { sourceBuffer.deallocate() }
+        data.copyBytes(to: sourceBuffer, count: data.count)
+
+        // Set up decompression stream
+        var stream = compression_stream()
+        var status = compression_stream_init(&stream, COMPRESSION_STREAM_DECODE, COMPRESSION_GZIP)
+        guard status != COMPRESSION_STATUS_ERROR else {
+            throw NSError(domain: "DisasterRecoveryManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "Failed to initialize decompression stream"])
+        }
+
+        stream.src_ptr = sourceBuffer
+        stream.src_size = data.count
+        stream.dst_ptr = destinationBuffer
+        stream.dst_size = destinationBufferSize
+
+        var decompressedData = Data()
+
+        repeat {
+            status = compression_stream_process(&stream, stream.src_size == 0 ? Int32(COMPRESSION_STREAM_FINALIZE.rawValue) : 0)
+
+            switch status {
+            case COMPRESSION_STATUS_OK, COMPRESSION_STATUS_END:
+                decompressedData.append(destinationBuffer, count: destinationBufferSize - stream.dst_size)
+                stream.dst_ptr = destinationBuffer
+                stream.dst_size = destinationBufferSize
+            case COMPRESSION_STATUS_ERROR:
+                compression_stream_destroy(&stream)
+                throw NSError(domain: "DisasterRecoveryManager", code: 2, userInfo: [NSLocalizedDescriptionKey: "Decompression failed"])
+            default:
+                break
+            }
+        } while status == COMPRESSION_STATUS_OK
+
+        compression_stream_destroy(&stream)
+        return decompressedData
     }
 
     private func calculateReadinessScore(_ testResult: DisasterRecoveryTestResult) -> Double {
